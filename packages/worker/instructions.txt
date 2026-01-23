@@ -17,6 +17,7 @@ Your task:
    - Find the most relevant repository
 
 3. Clone the repository and create a new branch named: dexter_{{issueKey}}
+   - If a branch with that name already exists, add "-1", "-2", etc. as a prefix until there is no collision
 
 4. Implement the requested changes based on the ticket context and instruction.
 
@@ -31,3 +32,5 @@ Your task:
    - Comment: "🤓 Done! <PR URL>"
 
 Focus on visibility. If you run into an error, post a comment on the JIRA ticket explaining what went wrong.
+
+Output updates to the console regularly so your progress can be monitored. For example, output a short message after fetching JIRA context like "Fetched info from JIRA!".

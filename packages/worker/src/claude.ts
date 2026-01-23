@@ -37,7 +37,15 @@ export async function invokeClaudeCode(
 
   return new Promise((resolve) => {
     // Pass prompt as argument (prompt must come right after --print)
-    const args = ["--print", prompt, "--mcp-config", mcpConfigPath];
+    // --dangerously-skip-permissions is required for non-interactive/automated usage
+    // to allow MCP tools without interactive permission prompts
+    const args = [
+      "--print",
+      prompt,
+      "--mcp-config",
+      mcpConfigPath,
+      "--dangerously-skip-permissions",
+    ];
 
     console.log(`Invoking Claude Code CLI for ${job.issueKey}...`);
 
