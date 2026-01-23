@@ -5,3 +5,5 @@ dist/
 .env.test
 .env.local
 *.log
+cloudflare-tunnel.json
+cloudflare-tunnel-config.yml

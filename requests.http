@@ -1,6 +1,11 @@
 # Use with VS Code REST Client extension or IntelliJ HTTP Client
+#
+# Webhook signatures are optional for local testing (when JIRA_WEBHOOK_SECRET is not set).
+# In production, set JIRA_WEBHOOK_SECRET to require signature verification.
 
 @baseUrl = http://localhost:3000
+@tunnelUrl = https://ben.mappedin.io
+@ticketKey = DXTR-3
 
 ### Health Check
 GET {{baseUrl}}/health
@@ -15,7 +20,7 @@ Content-Type: application/json
     "body": "@dexter implement the change described in this ticket",
     "author": { "displayName": "Test Developer" }
   },
-  "issue": { "key": "DXTR-2" }
+  "issue": { "key": "{{ticketKey}}" }
 }
 
 ### Non-dexter comment (should be ignored)
@@ -28,7 +33,7 @@ Content-Type: application/json
     "body": "This is a regular comment without the trigger",
     "author": { "displayName": "Product Manager" }
   },
-  "issue": { "key": "TASK-789" }
+  "issue": { "key": "{{ticketKey}}" }
 }
 
 ### Non-comment event (should be ignored)
@@ -41,5 +46,22 @@ Content-Type: application/json
     "body": "@dexter this won't trigger because event type is wrong",
     "author": { "displayName": "Test Developer" }
   },
-  "issue": { "key": "TEST-001" }
+  "issue": { "key": "{{ticketKey}}" }
+}
+
+###############################################
+# Cloudflare Tunnel Tests (run: pnpm tunnel)
+###############################################
+
+### Test tunnel connection
+POST {{tunnelUrl}}/webhook/jira
+Content-Type: application/json
+
+{
+  "webhookEvent": "comment_created",
+  "comment": {
+    "body": "Test cloudflare tunnel, dexter should ignore this",
+    "author": { "displayName": "Tunnel Test" }
+  },
+  "issue": { "key": "{{ticketKey}}" }
 }

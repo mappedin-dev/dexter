@@ -10,6 +10,8 @@ Major changes should be discussed, and if implemented, should be documented in t
 
 Ensure the [README](./README.md) is updated with any new project requirements.
 
+If unsure about whether a change should be reflected in the README, ask.
+
 # AGENTS.md
 
 When adding new AGENTS.md files, keep the contents as concise as possible.

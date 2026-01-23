@@ -9,11 +9,12 @@ Your AI-powered intern that turns JIRA tickets into pull requests. Mention `@dex
 
 ## Credentials
 
-| Credential            | Purpose                              |
-| --------------------- | ------------------------------------ |
-| **JIRA API Token**    | Reading tickets and posting comments |
-| **GitHub PAT**        | `repo` and `workflow` scopes         |
-| **Anthropic API Key** | Claude Code CLI                      |
+| Credential              | Purpose                              |
+| ----------------------- | ------------------------------------ |
+| **JIRA API Token**      | Reading tickets and posting comments |
+| **JIRA Webhook Secret** | Verify webhook signatures (optional) |
+| **GitHub PAT**          | `repo` and `workflow` scopes         |
+| **Anthropic API Key**   | Claude Code CLI                      |
 
 ## Setup
 

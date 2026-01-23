@@ -1,4 +1,9 @@
-import express from "express";
+import express, {
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
+import { createHmac, timingSafeEqual } from "crypto";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
@@ -16,6 +21,7 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const JIRA_BASE_URL = process.env.JIRA_BASE_URL || "";
 const JIRA_EMAIL = process.env.JIRA_EMAIL || "";
 const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN || "";
+const JIRA_WEBHOOK_SECRET = process.env.JIRA_WEBHOOK_SECRET || "";
 
 // Initialize queue
 const queue = createQueue(REDIS_URL);
@@ -31,8 +37,85 @@ createBullBoard({
 
 app.use("/admin", serverAdapter.getRouter());
 
-// Parse JSON bodies
-app.use(express.json());
+/**
+ * Verify Jira webhook signature using HMAC-SHA256
+ * Jira sends signature in X-Hub-Signature header with format: sha256=<signature>
+ */
+function verifyJiraSignature(
+  secret: string,
+  payload: string,
+  signature: string
+): boolean {
+  if (!signature) return false;
+
+  // Handle both "sha256=xxx" format and raw signature
+  const sig = signature.startsWith("sha256=") ? signature.slice(7) : signature;
+
+  const expectedSignature = createHmac("sha256", secret)
+    .update(payload, "utf8")
+    .digest("hex");
+
+  try {
+    return timingSafeEqual(
+      Buffer.from(sig, "hex"),
+      Buffer.from(expectedSignature, "hex")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Middleware to verify Jira webhook secret
+ */
+function jiraWebhookAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  // Skip verification if no secret configured (local development)
+  if (!JIRA_WEBHOOK_SECRET) {
+    console.warn(
+      "JIRA_WEBHOOK_SECRET not configured - skipping signature verification"
+    );
+    next();
+    return;
+  }
+
+  const signature =
+    (req.headers["x-hub-signature-256"] as string) ||
+    (req.headers["x-hub-signature"] as string);
+
+  if (!signature) {
+    res.status(401).json({ error: "Missing webhook signature" });
+    return;
+  }
+
+  const rawBody = (req as Request & { rawBody?: string }).rawBody;
+  if (!rawBody) {
+    res
+      .status(500)
+      .json({ error: "Raw body not available for signature verification" });
+    return;
+  }
+
+  if (!verifyJiraSignature(JIRA_WEBHOOK_SECRET, rawBody, signature)) {
+    console.warn("Invalid Jira webhook signature");
+    res.status(401).json({ error: "Invalid webhook signature" });
+    return;
+  }
+
+  next();
+}
+
+// Parse JSON bodies and capture raw body for signature verification
+app.use(
+  express.json({
+    verify: (req: Request, _res: Response, buf: Buffer) => {
+      (req as Request & { rawBody?: string }).rawBody = buf.toString("utf8");
+    },
+  })
+);
 
 /**
  * Post a comment to JIRA
@@ -81,7 +164,7 @@ async function postJiraComment(
 /**
  * JIRA webhook endpoint
  */
-app.post("/webhook/jira", async (req, res) => {
+app.post("/webhook/jira", jiraWebhookAuth, async (req, res) => {
   try {
     const payload = req.body as WebhookPayload;
 

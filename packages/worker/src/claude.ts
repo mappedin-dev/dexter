@@ -47,6 +47,11 @@ export async function invokeClaudeCode(
       "--dangerously-skip-permissions",
     ];
 
+    // Add model if specified via environment variable
+    if (process.env.CLAUDE_MODEL) {
+      args.push("--model", process.env.CLAUDE_MODEL);
+    }
+
     console.log(`Invoking Claude Code CLI for ${job.issueKey}...`);
 
     const proc = spawn("claude", args, {
