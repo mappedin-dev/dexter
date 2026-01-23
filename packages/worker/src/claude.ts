@@ -7,17 +7,76 @@ import type { Job } from "@dexter/shared";
 // ES module equivalent of __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Load instructions template at startup
-const instructionsPath = path.join(__dirname, "..", "instructions.txt");
-const instructionsTemplate = fs.readFileSync(instructionsPath, "utf-8");
-
 // MCP config path
 const mcpConfigPath = path.join(__dirname, "..", "mcp-config.json");
+
+// Default instructions path (bundled with worker)
+const defaultInstructionsPath = path.join(__dirname, "..", "instructions.txt");
+
+// Cache for instructions loaded from URL
+let cachedInstructions: string | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_TTL_MS = 60_000; // 1 minute cache TTL
+
+/**
+ * Load instructions template from configured source.
+ * Priority:
+ * 1. INSTRUCTIONS_URL - fetch from remote URL (cached for 1 minute)
+ * 2. INSTRUCTIONS_PATH - read from custom file path
+ * 3. Default bundled instructions.txt
+ */
+async function loadInstructions(): Promise<string> {
+  const instructionsUrl = process.env.INSTRUCTIONS_URL;
+  const instructionsPath = process.env.INSTRUCTIONS_PATH;
+
+  // Option 1: Load from URL
+  if (instructionsUrl) {
+    const now = Date.now();
+    if (cachedInstructions && now - cacheTimestamp < CACHE_TTL_MS) {
+      return cachedInstructions;
+    }
+
+    try {
+      console.log(`Fetching instructions from URL: ${instructionsUrl}`);
+      const response = await fetch(instructionsUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      cachedInstructions = await response.text();
+      cacheTimestamp = now;
+      return cachedInstructions;
+    } catch (error) {
+      console.error(`Failed to fetch instructions from URL: ${error}`);
+      // Fall back to cached version if available
+      if (cachedInstructions) {
+        console.log("Using cached instructions as fallback");
+        return cachedInstructions;
+      }
+      // Fall back to default
+      console.log("Falling back to default instructions");
+    }
+  }
+
+  // Option 2: Load from custom file path
+  if (instructionsPath) {
+    try {
+      console.log(`Loading instructions from path: ${instructionsPath}`);
+      return fs.readFileSync(instructionsPath, "utf-8");
+    } catch (error) {
+      console.error(`Failed to read instructions from path: ${error}`);
+      console.log("Falling back to default instructions");
+    }
+  }
+
+  // Option 3: Load from default bundled file
+  return fs.readFileSync(defaultInstructionsPath, "utf-8");
+}
 
 /**
  * Build the prompt for Claude Code CLI
  */
-function buildPrompt(job: Job): string {
+async function buildPrompt(job: Job): Promise<string> {
+  const instructionsTemplate = await loadInstructions();
   return instructionsTemplate
     .replace(/\{\{issueKey\}\}/g, job.issueKey)
     .replace(/\{\{triggeredBy\}\}/g, job.triggeredBy)
@@ -33,7 +92,7 @@ export async function invokeClaudeCode(
   job: Job,
   workDir: string
 ): Promise<{ success: boolean; output: string; error?: string }> {
-  const prompt = buildPrompt(job);
+  const prompt = await buildPrompt(job);
 
   return new Promise((resolve) => {
     // Pass prompt as argument (prompt must come right after --print)
