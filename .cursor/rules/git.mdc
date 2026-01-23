@@ -1,0 +1,7 @@
+---
+description: using git
+alwaysApply: false
+---
+
+Never delete remote branches.
+Never ever force push.

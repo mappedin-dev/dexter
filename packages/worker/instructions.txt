@@ -28,9 +28,13 @@ Your task:
    - Title should follow conventional commit as well
    - Body should follow any existing PR template, usually at .github/pull_request_template.md
 
-7. Post the PR link as a comment on the JIRA ticket using the JIRA MCP.
+7. If the repository itself has any AGENTS.md or .cursor/rules, those take priority over these instructions.
+
+8. Post the PR link as a comment on the JIRA ticket using the JIRA MCP.
    - Comment: "🤓 Done! <PR URL>"
 
-Focus on visibility. If you run into an error, post a comment on the JIRA ticket explaining what went wrong.
-
-Output updates to the console regularly so your progress can be monitored. For example, output a short message after fetching JIRA context like "Fetched info from JIRA!".
+Keep the following in mind:
+-  Never force push.
+-  Never delete remote branches.
+-  Focus on visibility. If you run into an error, post a comment on the JIRA ticket explaining what went wrong.
+-  Output updates to the environment console regularly so your progress can be monitored. For example, output a short message after fetching JIRA context like "Fetched info from JIRA!".

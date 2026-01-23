@@ -1,0 +1,16 @@
+---
+description: opening pull requests
+alwaysApply: false
+---
+
+Open pull requests using the GitHub CLI.
+
+When opening pull requests, the pull request title should follow conventional commit format. Always include the ticket number if available; it can usually be found in the branch name. If no ticket number is available, ask the user. If no ticket number is available still, then use a generic scope like "deps" or "ci".
+
+For example:
+
+- feat(SDKS-1234): add nearest API to Query class
+- fix(SDKS-1235): fix typo in label appearance options
+- chore(deps): bump turf from 0.0.1 to 0.0.2
+
+Usually when creating a pull request, the description can be populated with the contents of [pull_request_template.md](../../.github/pull_request_template.md). Fill out the template to the best of your abilities and ask for clarification on anything that is unclear.
