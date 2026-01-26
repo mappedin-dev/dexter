@@ -62,6 +62,27 @@ Your AI-powered intern that turns JIRA tickets into pull requests. Mention `@dex
 
 4. Expose the webhook server (defaults to `:3000`) to the internet and configure your JIRA webhook to point to it.
 
+## Local Development (Polling Mode)
+
+If you don't have JIRA admin access to configure webhooks, use polling mode instead:
+
+1. Add the projects you want to poll to your `.env`:
+
+   ```bash
+   JIRA_POLL_PROJECTS=DXTR,OTHER    # Comma-separated project keys
+   JIRA_POLL_INTERVAL_MS=30000      # Optional, defaults to 30 seconds
+   ```
+
+2. Start with polling mode:
+
+   ```bash
+   pnpm dev:poll
+   ```
+
+   This runs Redis, the poller, and the worker (no webhook server).
+
+The poller queries JIRA for new `@dexter` comments and adds jobs to the same queue as the webhook would.
+
 ## Local Testing
 
 Use the `requests.http` file to trigger workflows without relying on the JIRA webhook:

@@ -6,27 +6,42 @@
 
 ```mermaid
 flowchart TD
-    subgraph JIRA["☁️ JIRA Cloud"]
-        A[👤 Developer comments<br/><code>@dexter implement auth</code>]
+    subgraph JIRA["JIRA Cloud"]
+        A["Developer comments @dexter"]
     end
 
-    B[Webhook Server]
+    subgraph triggers ["Trigger Options"]
+        B[Webhook Server]
+        P[Poller Service]
+    end
+
     C[("BullMQ / Redis")]
     D[Workers]
 
-    subgraph External["🔗 External Services"]
+    subgraph External["External Services"]
         H[GitHub]
         I[Claude API]
         J[JIRA API]
     end
 
     A -->|webhook| B
+    A -.->|"poll (API)"| P
     B -->|queue.add| C
+    P -->|queue.add| C
     C -->|worker.process| D
     D -->|MCP| J
     D -->|MCP| H
     D -->|generate code| I
 ```
+
+### Trigger Options
+
+| Mode | Command | Use Case |
+|------|---------|----------|
+| **Webhook** | `pnpm dev` | Production, requires JIRA admin to configure webhook |
+| **Polling** | `pnpm dev:poll` | Local dev, no JIRA admin access needed |
+
+Both modes add jobs to the same BullMQ queue. The worker processes jobs identically regardless of how they were triggered.
 
 ### End-to-End Example
 
