@@ -7,7 +7,7 @@ import {
   postJiraComment,
   postGitHubComment,
 } from "@dexter/shared";
-import { invokeClaudeCode } from "./claude.js";
+import { invokeClaudeCode, getJobId } from "./claude.js";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -45,8 +45,10 @@ async function postComment(job: Job, comment: string): Promise<void> {
 /**
  * Create a temporary workspace directory
  */
-async function createTempWorkspace(issueKey: string): Promise<string> {
-  const tempDir = path.join(os.tmpdir(), `dexter-${issueKey}-${Date.now()}`);
+async function createTempWorkspace(jobId: string): Promise<string> {
+  // Sanitize jobId for filesystem (replace / with -)
+  const sanitized = jobId.replace(/\//g, "-");
+  const tempDir = path.join(os.tmpdir(), `dexter-${sanitized}-${Date.now()}`);
   await fs.mkdir(tempDir, { recursive: true });
   return tempDir;
 }
@@ -67,19 +69,20 @@ async function cleanupWorkspace(workDir: string): Promise<void> {
  */
 async function processJob(bullJob: BullJob<Job>): Promise<void> {
   const job = bullJob.data;
-  console.log(`Processing job for ${job.issueKey}: ${job.instruction}`);
+  const jobId = getJobId(job);
+  console.log(`Processing job for ${jobId}: ${job.instruction}`);
 
-  const workDir = await createTempWorkspace(job.issueKey);
+  const workDir = await createTempWorkspace(jobId);
   console.log(`Created workspace: ${workDir}`);
 
   try {
     const result = await invokeClaudeCode(job, workDir);
 
     if (!result.success) {
-      throw new Error(result.error || 'Claude Code CLI failed');
+      throw new Error(result.error || "Claude Code CLI failed");
     }
 
-    console.log(`Job completed for ${job.issueKey}`);
+    console.log(`Job completed for ${jobId}`);
   } finally {
     await cleanupWorkspace(workDir);
     console.log(`Cleaned up workspace: ${workDir}`);
@@ -90,32 +93,29 @@ async function processJob(bullJob: BullJob<Job>): Promise<void> {
 const worker = createWorker(REDIS_URL, processJob);
 
 // Handle failed jobs - post error to appropriate source
-worker.on('failed', async (job, err) => {
+worker.on("failed", async (job, err) => {
   if (job) {
-    console.error(`Job failed for ${job.data.issueKey}:`, err.message);
-    await postComment(
-      job.data,
-      `🤓 Oops, I hit an error: ${err.message}`
-    );
+    console.error(`Job failed for ${getJobId(job.data)}:`, err.message);
+    await postComment(job.data, `🤓 Oops, I hit an error: ${err.message}`);
   }
 });
 
 // Handle completed jobs
-worker.on('completed', (job) => {
-  console.log(`Job completed: ${job.data.issueKey}`);
+worker.on("completed", (job) => {
+  console.log(`Job completed: ${getJobId(job.data)}`);
 });
 
-console.log('Worker started, waiting for jobs...');
+console.log("Worker started, waiting for jobs...");
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('Shutting down worker...');
+process.on("SIGTERM", async () => {
+  console.log("Shutting down worker...");
   await worker.close();
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
-  console.log('Shutting down worker...');
+process.on("SIGINT", async () => {
+  console.log("Shutting down worker...");
   await worker.close();
   process.exit(0);
 });

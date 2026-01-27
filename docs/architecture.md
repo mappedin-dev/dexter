@@ -5,6 +5,7 @@
 ### Workflow
 
 Dexter can be triggered from two entry points:
+
 - **JIRA**: Comment `@dexter` on a ticket to create a new PR
 - **GitHub**: Comment `@dexter` on an existing PR to request updates
 
@@ -37,7 +38,7 @@ flowchart TD
     D -->|generate code| I
 ```
 
-### End-to-End: JIRA to PR
+### End-to-End Example
 
 ```mermaid
 sequenceDiagram
@@ -45,49 +46,37 @@ sequenceDiagram
     participant JIRA
     participant System as Dexter
     participant GH as GitHub
+
+    Note over Dev,GH: 1. Create PR from JIRA
 
     Dev->>JIRA: Comment "@dexter implement this fix"
     JIRA->>System: Webhook: comment_created
     System->>System: Enqueue job
     System->>JIRA: Comment "🤓 Okie dokie!"
 
-    Note over System: Worker picks up job
-
     System->>JIRA: Fetch ticket context
     System->>GH: Search repos, infer target
-    System->>GH: Clone repo
     System->>System: Claude generates code
     System->>GH: Push branch, create PR
     System->>JIRA: Comment "🤓 Done! github.com/..."
 
-    Dev->>GH: Review & merge PR
-```
+    Dev->>GH: Review PR
 
-### End-to-End: GitHub PR Update
-
-```mermaid
-sequenceDiagram
-    actor Dev as Developer
-    participant GH as GitHub
-    participant System as Dexter
-    participant JIRA
+    Note over Dev,GH: 2. Request changes via GitHub
 
     Dev->>GH: Comment "@dexter add unit tests"
-    GH->>System: Webhook: issue_comment (on PR)
-    System->>System: Extract issue key from branch name
+    GH->>System: Webhook: issue_comment
+    System->>System: Extract issue key from branch
     System->>System: Enqueue job
     System->>GH: Comment "🤓 Okie dokie!"
 
-    Note over System: Worker picks up job
-
     System->>JIRA: Fetch ticket context
     System->>GH: Fetch PR details and comments
-    System->>GH: Clone repo, checkout existing branch
     System->>System: Claude generates code
     System->>GH: Push commits to branch
     System->>GH: Comment "🤓 Done! <summary>"
 
-    Dev->>GH: Review updates & merge PR
+    Dev->>GH: Approve & merge PR
 ```
 
 ## Worker Internals

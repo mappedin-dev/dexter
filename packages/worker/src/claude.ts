@@ -1,61 +1,17 @@
 import { spawn } from "child_process";
-import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { type Job, isGitHubJob } from "@dexter/shared";
+import type { Job } from "@dexter/shared";
+import { buildPrompt, getReadableId } from "./prompt.js";
 
 // ES module equivalent of __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Load instructions templates at startup
-const jiraInstructionsPath = path.join(
-  __dirname,
-  "..",
-  "instructions",
-  "jira.txt"
-);
-const jiraInstructionsTemplate = fs.readFileSync(jiraInstructionsPath, "utf-8");
-
-const githubInstructionsPath = path.join(
-  __dirname,
-  "..",
-  "instructions",
-  "github.txt"
-);
-const githubInstructionsTemplate = fs.readFileSync(
-  githubInstructionsPath,
-  "utf-8"
-);
-
 // MCP config path
 const mcpConfigPath = path.join(__dirname, "..", "mcp-config.json");
 
-/**
- * Build the prompt for Claude Code CLI
- */
-function buildPrompt(job: Job): string {
-  // Use GitHub-specific template if job was triggered from GitHub
-  if (isGitHubJob(job)) {
-    return githubInstructionsTemplate
-      .replace(/\{\{issueKey\}\}/g, job.issueKey)
-      .replace(/\{\{triggeredBy\}\}/g, job.triggeredBy)
-      .replace(/\{\{instruction\}\}/g, job.instruction)
-      .replace(/\{\{owner\}\}/g, job.owner)
-      .replace(/\{\{repo\}\}/g, job.repo)
-      .replace(/\{\{prNumber\}\}/g, String(job.prNumber))
-      .replace(/\{\{branch\}\}/g, job.branch)
-      .replace(/\{\{timestamp\}\}/g, String(Date.now()))
-      .trim();
-  }
-
-  // Use JIRA template for JIRA-triggered jobs
-  return jiraInstructionsTemplate
-    .replace(/\{\{issueKey\}\}/g, job.issueKey)
-    .replace(/\{\{triggeredBy\}\}/g, job.triggeredBy)
-    .replace(/\{\{instruction\}\}/g, job.instruction)
-    .replace(/\{\{timestamp\}\}/g, String(Date.now()))
-    .trim();
-}
+// Re-export for convenience
+export { getReadableId as getJobId } from "./prompt.js";
 
 /**
  * Invoke Claude Code CLI to process a job
@@ -83,7 +39,7 @@ export async function invokeClaudeCode(
       args.push("--model", process.env.CLAUDE_MODEL);
     }
 
-    console.log(`Invoking Claude Code CLI for ${job.issueKey}...`);
+    console.log(`Invoking Claude Code CLI for ${getReadableId(job)}...`);
 
     const proc = spawn("claude", args, {
       cwd: workDir,

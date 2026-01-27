@@ -2,7 +2,6 @@
  * Base job data common to all sources
  */
 export interface BaseJob {
-  issueKey: string;
   instruction: string;
   triggeredBy: string;
 }
@@ -12,6 +11,7 @@ export interface BaseJob {
  */
 export interface JiraJob extends BaseJob {
   source: "jira";
+  issueKey: string;
   projectKey: string;
 }
 
@@ -23,8 +23,6 @@ export interface GitHubJob extends BaseJob {
   owner: string;
   repo: string;
   prNumber: number;
-  commentId: number;
-  branch: string;
 }
 
 /**

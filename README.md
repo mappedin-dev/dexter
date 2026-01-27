@@ -2,7 +2,9 @@
 
 Your AI-powered intern that turns JIRA tickets into pull requests. Mention `@dexter` in a JIRA comment with an instruction, and it will read the ticket, make code changes, and open a PR on GitHub.
 
-## Using Dexter in JIRA
+## Usage
+
+### JIRA
 
 Use Dexter to open PRs from an existing JIRA ticket.
 
@@ -17,11 +19,11 @@ Use Dexter to open PRs from an existing JIRA ticket.
    - Create a branch and implement the requested changes
    - Open a pull request and post the link back to the ticket
 
-## Using Dexter in GitHub PR Comments
+### GitHub
 
 Use Dexter to update an open PR in GitHub.
 
-1. Navigate to any PR created by Dexter (branch name should contain a JIRA ticket key like `dexter_DXTR-123`)
+1. Navigate to any PR.
 2. Add a comment mentioning `@dexter` followed by your instruction:
    ```
    @dexter please add unit tests for this feature
@@ -33,15 +35,13 @@ Use Dexter to update an open PR in GitHub.
    - Push new commits to update the PR
    - Post a summary of changes as a PR comment
 
-### Tips
+### Tips and Best Practices
 
 - Be specific in your instructions for better results
-- Include the repository URL in your comment if Dexter can't find it automatically:
+- Include the repository URL in your comment if Dexter can't find it automatically
   ```
   @dexter implement this in https://github.com/org/repo
   ```
-- Dexter posts progress updates as comments, so you can track its work
-- When requesting PR updates via GitHub, Dexter will work on the existing branch instead of creating a new one
 
 ## Prerequisites
 
@@ -85,6 +85,8 @@ Use Dexter to update an open PR in GitHub.
    - **GitHub**: Point to `/webhook/github` for PR comment triggers (configure for `issue_comment` events)
 
 ## Local Testing
+
+###
 
 Use the `requests.http` file to trigger workflows without relying on the JIRA webhook:
 
