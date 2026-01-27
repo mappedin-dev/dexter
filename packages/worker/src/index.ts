@@ -7,7 +7,8 @@ import {
   postJiraComment,
   postGitHubComment,
 } from "@dexter/shared";
-import { invokeClaudeCode, getJobId } from "./claude.js";
+import { invokeClaudeCode } from "./claude.js";
+import { getReadableId } from "./utils.js";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -69,7 +70,7 @@ async function cleanupWorkspace(workDir: string): Promise<void> {
  */
 async function processJob(bullJob: BullJob<Job>): Promise<void> {
   const job = bullJob.data;
-  const jobId = getJobId(job);
+  const jobId = getReadableId(job);
   console.log(`Processing job for ${jobId}: ${job.instruction}`);
 
   const workDir = await createTempWorkspace(jobId);
@@ -95,14 +96,14 @@ const worker = createWorker(REDIS_URL, processJob);
 // Handle failed jobs - post error to appropriate source
 worker.on("failed", async (job, err) => {
   if (job) {
-    console.error(`Job failed for ${getJobId(job.data)}:`, err.message);
+    console.error(`Job failed for ${getReadableId(job.data)}:`, err.message);
     await postComment(job.data, `🤓 Oops, I hit an error: ${err.message}`);
   }
 });
 
 // Handle completed jobs
 worker.on("completed", (job) => {
-  console.log(`Job completed: ${getJobId(job.data)}`);
+  console.log(`Job completed: ${getReadableId(job.data)}`);
 });
 
 console.log("Worker started, waiting for jobs...");

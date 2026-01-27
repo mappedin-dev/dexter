@@ -2,16 +2,14 @@ import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { Job } from "@dexter/shared";
-import { buildPrompt, getReadableId } from "./prompt.js";
+import { buildPrompt } from "./prompt.js";
+import { getReadableId } from "./utils.js";
 
 // ES module equivalent of __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // MCP config path
 const mcpConfigPath = path.join(__dirname, "..", "mcp-config.json");
-
-// Re-export for convenience
-export { getReadableId as getJobId } from "./prompt.js";
 
 /**
  * Invoke Claude Code CLI to process a job

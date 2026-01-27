@@ -27,21 +27,6 @@ const githubInstructionsTemplate = fs.readFileSync(
 );
 
 /**
- * Get a job identifier for logging
- */
-export function getReadableId(job: Job): string {
-  if (isGitHubJob(job)) {
-    return `${job.repo}#${job.prNumber}`;
-  }
-
-  if (isJiraJob(job)) {
-    return job.issueKey;
-  }
-
-  return "";
-}
-
-/**
  * Build the prompt for Claude Code CLI
  */
 export function buildPrompt(job: Job): string {
