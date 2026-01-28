@@ -11,19 +11,20 @@ Dexter can be triggered from two entry points:
 
 ```mermaid
 flowchart TD
-    subgraph JIRA["☁️ JIRA Cloud"]
-        A[👤 Developer comments<br/><code>@dexter implement auth</code>]
-    end
-
-    subgraph GitHub["☁️ GitHub"]
-        G[👤 Developer comments on PR<br/><code>@dexter add tests</code>]
+    subgraph JIRA["JIRA Cloud"]
+        A["Developer comments @dexter"]
     end
 
     B[Webhook Server]
+
+    subgraph GitHub["GitHub"]
+        G[Developer comments on PR<br/><code>@dexter add tests</code>]
+    end
+
     C[("BullMQ / Redis")]
     D[Workers]
 
-    subgraph External["🔗 External Services"]
+    subgraph External["External Services"]
         H[GitHub API]
         I[Claude API]
         J[JIRA API]
