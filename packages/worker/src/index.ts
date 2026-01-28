@@ -1,11 +1,11 @@
 import {
   createWorker,
-  type Job,
   type BullJob,
-  isJiraJob,
   isGitHubJob,
-  postJiraComment,
+  isJiraJob,
   postGitHubComment,
+  postJiraComment,
+  type Job,
 } from "@dexter/shared";
 import { invokeClaudeCode } from "./claude.js";
 import { getReadableId } from "./utils.js";

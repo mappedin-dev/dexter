@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
     "./types": {
       "import": "./dist/types.js",
       "types": "./dist/types.d.ts"
@@ -11,6 +15,10 @@
     "./queue": {
       "import": "./dist/queue.js",
       "types": "./dist/queue.d.ts"
+    },
+    "./api": {
+      "import": "./dist/api.js",
+      "types": "./dist/api.d.ts"
     },
     "./jira": {
       "import": "./dist/jira.js",
