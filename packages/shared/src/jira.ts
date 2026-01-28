@@ -135,11 +135,7 @@ export async function searchRecentlyUpdatedIssues(
  * Extract plain text from JIRA's Atlassian Document Format (ADF)
  * ADF is a nested JSON structure used by JIRA Cloud for rich text
  */
-export function extractTextFromAdf(adf: unknown, debug = false): string {
-  if (debug) {
-    console.log("ADF structure:", JSON.stringify(adf, null, 2));
-  }
-
+export function extractTextFromAdf(adf: unknown): string {
   if (!adf || typeof adf !== "object") {
     // Plain text fallback
     return typeof adf === "string" ? adf : "";
@@ -193,14 +189,14 @@ export function extractTextFromAdf(adf: unknown, debug = false): string {
   // Handle paragraph breaks
   if (doc.type === "paragraph") {
     const text = Array.isArray(doc.content)
-      ? doc.content.map((node) => extractTextFromAdf(node, false)).join("")
+      ? doc.content.map((node) => extractTextFromAdf(node)).join("")
       : "";
     return text + "\n";
   }
 
   // Recursively process content
   if (Array.isArray(doc.content)) {
-    return doc.content.map((node) => extractTextFromAdf(node, false)).join("");
+    return doc.content.map((node) => extractTextFromAdf(node)).join("");
   }
 
   return "";
@@ -209,10 +205,10 @@ export function extractTextFromAdf(adf: unknown, debug = false): string {
 /**
  * Get comment body as plain text, handling both string and ADF formats
  */
-export function getCommentText(comment: JiraComment, debug = false): string {
+export function getCommentText(comment: JiraComment): string {
   const body = comment.body as unknown;
   if (typeof body === "string") {
     return body;
   }
-  return extractTextFromAdf(body, debug);
+  return extractTextFromAdf(body);
 }
