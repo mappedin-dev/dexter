@@ -23,6 +23,8 @@ export interface GitHubJob extends BaseJob {
   owner: string;
   repo: string;
   prNumber: number;
+  /** PR branch name (used to extract Jira issue key for session linking) */
+  branchName?: string;
 }
 
 /**

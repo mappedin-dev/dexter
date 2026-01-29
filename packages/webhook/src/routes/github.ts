@@ -7,6 +7,7 @@ import {
   extractDexterInstruction,
   extractIssueKeyFromBranch,
   postGitHubComment,
+  fetchGitHubPRDetails,
 } from "@dexter/shared";
 import { queue, GITHUB_TOKEN } from "../config.js";
 import { githubWebhookAuth } from "../middleware/index.js";
@@ -142,6 +143,14 @@ router.post("/", githubWebhookAuth, async (req, res) => {
     const repo = payload.repository.name;
     const prNumber = payload.issue.number;
 
+    // Fetch PR details to get the branch name for session linking
+    const prDetails = await fetchGitHubPRDetails(
+      GITHUB_TOKEN,
+      owner,
+      repo,
+      prNumber,
+    );
+
     const job: GitHubJob = {
       instruction,
       triggeredBy: payload.comment.user.login,
@@ -149,7 +158,18 @@ router.post("/", githubWebhookAuth, async (req, res) => {
       owner,
       repo,
       prNumber,
+      branchName: prDetails?.branchName,
     };
+
+    // Log session linking info
+    if (prDetails?.branchName) {
+      const issueKey = extractIssueKeyFromBranch(prDetails.branchName);
+      if (issueKey) {
+        console.log(
+          `[Session] PR #${prNumber} linked to ${issueKey} via branch: ${prDetails.branchName}`,
+        );
+      }
+    }
 
     await queue.add("process-ticket", job, {
       attempts: 3,
