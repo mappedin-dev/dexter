@@ -2,13 +2,13 @@ import express, { type Request, type Response } from "express";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
-import { createQueue } from "@dexter/shared/queue";
 import {
   PORT,
   queue,
   JIRA_WEBHOOK_SECRET,
   GITHUB_WEBHOOK_SECRET,
 } from "./config.js";
+import { getBotName } from "@mapthew/shared";
 import type { RequestWithRawBody } from "./middleware/index.js";
 import jiraRoutes from "./routes/jira.js";
 import githubRoutes from "./routes/github.js";
@@ -32,7 +32,7 @@ app.use(
     verify: (req: Request, _res: Response, buf: Buffer) => {
       (req as RequestWithRawBody).rawBody = buf.toString("utf8");
     },
-  }),
+  })
 );
 
 // Routes
@@ -47,14 +47,15 @@ app.get("/health", (_req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Webhook server listening on port ${PORT}`);
+  console.log(`  Listening as: @${getBotName()}`);
   console.log(
     `  JIRA webhook secret: ${
       JIRA_WEBHOOK_SECRET ? "configured" : "NOT configured"
-    }`,
+    }`
   );
   console.log(
     `  GitHub webhook secret: ${
       GITHUB_WEBHOOK_SECRET ? "configured" : "NOT configured"
-    }`,
+    }`
   );
 });
