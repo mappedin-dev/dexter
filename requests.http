@@ -3,9 +3,9 @@
 # Webhook signatures are optional for local testing (when JIRA_WEBHOOK_SECRET is not set).
 # In production, set JIRA_WEBHOOK_SECRET to require signature verification.
 
-@baseUrl = http://localhost:3000
-@tunnelUrl = https://ben.mappedin.io
-@ticketKey = DXTR-3
+@baseUrl = http://localhost:3500
+@tunnelUrl = https://darrenchay.mappedin.io
+@ticketKey = SRV-3244
 
 ### Health Check
 GET {{baseUrl}}/health

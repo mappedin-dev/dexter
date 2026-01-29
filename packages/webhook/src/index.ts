@@ -12,6 +12,7 @@ import {
 import type { RequestWithRawBody } from "./middleware/index.js";
 import jiraRoutes from "./routes/jira.js";
 import githubRoutes from "./routes/github.js";
+import sessionsRoutes from "./routes/sessions.js";
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use(
 // Routes
 app.use("/webhook/jira", jiraRoutes);
 app.use("/webhook/github", githubRoutes);
+app.use("/api/sessions", sessionsRoutes);
 
 // Health check
 app.get("/health", (_req, res) => {

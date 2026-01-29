@@ -1,4 +1,4 @@
-import { createQueue, Queue, type Job } from "@dexter/shared";
+import { createQueue, Queue, type QueueJob } from "@dexter/shared";
 
 export const PORT = process.env.PORT || 3000;
 export const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
@@ -15,4 +15,4 @@ export const jiraCredentials = {
   apiToken: JIRA_API_TOKEN,
 };
 
-export const queue: Queue<Job> = createQueue(REDIS_URL);
+export const queue: Queue<QueueJob> = createQueue(REDIS_URL);

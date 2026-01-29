@@ -1,14 +1,16 @@
 import { Queue, Worker, type Job as BullJob, type Processor } from "bullmq";
-import type { Job } from "./types.js";
+import type { QueueJob } from "./types.js";
 
 const QUEUE_NAME = "dexter-jobs";
 
 /**
  * Create a BullMQ queue for adding jobs
+ *
+ * The queue accepts all job types (regular jobs and system jobs like cleanup)
  */
-export function createQueue(redisUrl: string): Queue<Job> {
+export function createQueue(redisUrl: string): Queue<QueueJob> {
   const connection = parseRedisUrl(redisUrl);
-  return new Queue<Job>(QUEUE_NAME, {
+  return new Queue<QueueJob>(QUEUE_NAME, {
     connection,
     defaultJobOptions: {
       removeOnComplete: {
@@ -27,10 +29,10 @@ export function createQueue(redisUrl: string): Queue<Job> {
  */
 export function createWorker(
   redisUrl: string,
-  processor: Processor<Job>
-): Worker<Job> {
+  processor: Processor<QueueJob>,
+): Worker<QueueJob> {
   const connection = parseRedisUrl(redisUrl);
-  return new Worker<Job>(QUEUE_NAME, processor, {
+  return new Worker<QueueJob>(QUEUE_NAME, processor, {
     connection,
     concurrency: 1, // Process one job at a time
   });

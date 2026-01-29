@@ -12,25 +12,47 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const mcpConfigPath = path.join(__dirname, "..", "mcp-config.json");
 
 /**
+ * Options for invoking Claude Code CLI
+ */
+export interface InvokeOptions {
+  /** Whether to resume an existing session */
+  hasSession?: boolean;
+}
+
+/**
  * Invoke Claude Code CLI to process a job
+ *
+ * @param job - The job to process
+ * @param workDir - The working directory for Claude
+ * @param options - Optional settings (e.g., session resume)
  */
 export async function invokeClaudeCode(
   job: Job,
   workDir: string,
+  options: InvokeOptions = {},
 ): Promise<{ success: boolean; output: string; error?: string }> {
+  const { hasSession = false } = options;
   const prompt = buildPrompt(job);
 
   return new Promise((resolve) => {
-    // Pass prompt as argument (prompt must come right after --print)
-    // --dangerously-skip-permissions is required for non-interactive/automated usage
-    // to allow MCP tools without interactive permission prompts
-    const args = [
-      "--print",
-      prompt,
-      "--mcp-config",
-      mcpConfigPath,
-      "--dangerously-skip-permissions",
-    ];
+    // Build args based on whether we're resuming a session
+    const args: string[] = [];
+
+    if (hasSession) {
+      // Resume existing session with new prompt
+      // --continue resumes the most recent conversation in this directory
+      args.push("--continue", "--print", prompt);
+      console.log(
+        `[Session] Resuming existing session for ${getReadableId(job)}`,
+      );
+    } else {
+      // Start new session
+      args.push("--print", prompt);
+      console.log(`[Session] Starting new session for ${getReadableId(job)}`);
+    }
+
+    // Common args
+    args.push("--mcp-config", mcpConfigPath, "--dangerously-skip-permissions");
 
     // Add model if specified via environment variable
     if (process.env.CLAUDE_MODEL) {
