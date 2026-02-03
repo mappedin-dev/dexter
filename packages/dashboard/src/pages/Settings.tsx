@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { api } from "../api/client";
+import { Dropdown } from "../components/Dropdown";
+import { LoadingSpinner } from "../components/LoadingSpinner";
+import { ErrorCard } from "../components/ErrorCard";
 import { useConfig } from "../context/ConfigContext";
 
 const BOT_NAME_REGEX = /^[a-z0-9][a-z0-9_-]*$/;
@@ -30,6 +33,7 @@ export default function Settings() {
   const { botDisplayName } = useConfig();
   const queryClient = useQueryClient();
   const [botName, setBotName] = useState("");
+  const [claudeModel, setClaudeModel] = useState("");
   const [touched, setTouched] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -41,11 +45,13 @@ export default function Settings() {
   useEffect(() => {
     if (config) {
       setBotName(config.botName);
+      setClaudeModel(config.claudeModel);
     }
   }, [config]);
 
   const mutation = useMutation({
-    mutationFn: (newBotName: string) => api.updateConfig({ botName: newBotName }),
+    mutationFn: (updates: { botName: string; claudeModel: string }) =>
+      api.updateConfig(updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["config"] });
       setSaved(true);
@@ -66,76 +72,83 @@ export default function Settings() {
     e.preventDefault();
     setTouched(true);
     if (!validationError) {
-      mutation.mutate(botName);
+      mutation.mutate({ botName, claudeModel });
     }
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (error) {
-    return (
-      <div className="glass-card p-6 border-red-500/30">
-        <p className="text-red-400">{t("settings.errorLoading", { message: (error as Error).message })}</p>
-      </div>
-    );
+    return <ErrorCard message={t("settings.errorLoading", { message: (error as Error).message })} />;
   }
 
-  const hasChanges = botName !== config?.botName;
+  const hasChanges = botName !== config?.botName || claudeModel !== config?.claudeModel;
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">{t("settings.title")}</h1>
         <p className="text-dark-400">{t("settings.description", { name: botDisplayName })}</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-lg space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="glass-card p-6">
-          <label htmlFor="botName" className="block text-sm font-medium text-dark-200 mb-3">
+          <label htmlFor="botName" className="block text-sm font-medium text-dark-200">
             {t("settings.botName.label")}
           </label>
-          <div className="flex items-center gap-3">
-            <span className="text-dark-400 text-lg">@</span>
-              <input
-                type="text"
-                id="botName"
-                value={botName}
-                onChange={handleChange}
-                onBlur={() => setTouched(true)}
-                maxLength={32}
-                autoComplete="off"
-              className={`flex-1 px-4 py-3 bg-dark-950/50 border rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
-                showError
-                  ? "border-red-500/50 focus:ring-red-500/50"
-                  : "border-dark-700 focus:ring-accent"
-              }`}
-              placeholder={t("settings.botName.placeholder")}
-            />
-          </div>
-          {showError && (
-            <p className="text-sm text-red-400 mt-3">{validationError}</p>
-          )}
-          <p className={`text-sm text-dark-500 ${showError ? "mt-2" : "mt-3"}`}>
-            {t("settings.botName.helpFormat")}
-          </p>
-          <p className="text-sm text-dark-500 mt-1">
+          <p className="text-sm text-dark-500 mt-1 mb-3">
             <Trans
-              i18nKey="settings.botName.helpMention"
+              i18nKey="settings.botName.description"
               values={{ botName: botName || "mapthew" }}
               components={{
                 name: <code className="px-1.5 py-0.5 bg-dark-800 rounded text-accent" />
               }}
             />
           </p>
+          <div className={`flex items-center bg-dark-950/50 border rounded-lg transition-all focus-within:ring-2 focus-within:border-transparent ${
+            showError
+              ? "border-red-500/50 focus-within:ring-red-500/50"
+              : "border-dark-700 focus-within:ring-accent"
+          }`}>
+            <span className="pl-4 text-dark-400 text-lg select-none">@</span>
+            <input
+              type="text"
+              id="botName"
+              value={botName}
+              onChange={handleChange}
+              onBlur={() => setTouched(true)}
+              maxLength={32}
+              autoComplete="off"
+              className="flex-1 px-2 py-3 bg-transparent text-white placeholder-dark-500 focus:outline-none"
+              placeholder={t("settings.botName.placeholder")}
+            />
+          </div>
+          {showError && (
+            <p className="text-sm text-red-400 mt-3">{validationError}</p>
+          )}
+          <p className="text-sm text-dark-600 mt-3">
+            {t("settings.botName.tip")}
+          </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="glass-card p-6">
+          <label htmlFor="claudeModel" className="block text-sm font-medium text-dark-200">
+            {t("settings.claudeModel.label")}
+          </label>
+          <p className="text-sm text-dark-500 mt-1 mb-3">
+            {t("settings.claudeModel.description")}
+          </p>
+          <Dropdown
+            id="claudeModel"
+            value={claudeModel}
+            options={config?.availableModels.map((model) => ({ value: model, label: model })) || []}
+            onChange={setClaudeModel}
+          />
+        </div>
+
+        <div className="flex items-center justify-center gap-4">
           <button
             type="submit"
             disabled={mutation.isPending || !hasChanges || !!validationError}

@@ -1,35 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, type JobData } from "../api/client";
-
-function StatusBadge({ status }: { status: JobData["status"] }) {
-  const { t } = useTranslation();
-  const styles: Record<JobData["status"], string> = {
-    waiting: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    active: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    completed: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-    failed: "bg-red-500/20 text-red-400 border-red-500/30",
-    delayed: "bg-dark-600/50 text-dark-300 border-dark-500/30",
-  };
-
-  return (
-    <span className={`px-3 py-1.5 rounded-full text-sm font-medium border ${styles[status]}`}>
-      {t(`jobs.status.${status}`)}
-    </span>
-  );
-}
-
-function DataSection({ title, data }: { title: string; data: unknown }) {
-  return (
-    <div className="glass-card p-6">
-      <h2 className="text-lg font-semibold text-white mb-4">{title}</h2>
-      <pre className="bg-dark-950/50 p-4 rounded-lg overflow-auto text-sm font-mono text-dark-200 border border-dark-700/50">
-        {JSON.stringify(data, null, 2)}
-      </pre>
-    </div>
-  );
-}
+import { api } from "../api/client";
+import { StatusBadge } from "../components/StatusBadge";
+import { LoadingSpinner } from "../components/LoadingSpinner";
+import { ErrorCard } from "../components/ErrorCard";
+import { DataSection } from "../components/DataSection";
 
 export default function Job() {
   const { t } = useTranslation();
@@ -62,19 +38,11 @@ export default function Job() {
   });
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (error) {
-    return (
-      <div className="glass-card p-6 border-red-500/30">
-        <p className="text-red-400">{t("job.errorLoading", { message: (error as Error).message })}</p>
-      </div>
-    );
+    return <ErrorCard message={t("job.errorLoading", { message: (error as Error).message })} />;
   }
 
   if (!job) {

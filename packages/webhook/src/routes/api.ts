@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { queue } from "../config.js";
-import { getConfig, saveConfig, getBotDisplayName, type AppConfig } from "@mapthew/shared";
+import {
+  getConfig,
+  saveConfig,
+  getBotDisplayName,
+  CLAUDE_MODELS,
+  type AppConfig,
+} from "@mapthew/shared";
 
 const router: Router = Router();
 
@@ -147,7 +153,12 @@ router.delete("/queue/jobs/:id", async (req, res) => {
 router.get("/config", async (_req, res) => {
   try {
     const config = await getConfig();
-    res.json({ botName: config.botName, botDisplayName: getBotDisplayName() });
+    res.json({
+      botName: config.botName,
+      botDisplayName: getBotDisplayName(),
+      claudeModel: config.claudeModel,
+      availableModels: CLAUDE_MODELS,
+    });
   } catch (error) {
     console.error("Error getting config:", error);
     res.status(500).json({ error: "Failed to get config" });
@@ -157,16 +168,34 @@ router.get("/config", async (_req, res) => {
 // PUT /api/config
 router.put("/config", async (req, res) => {
   try {
-    const { botName } = req.body as Partial<AppConfig>;
+    const { botName, claudeModel } = req.body as Partial<AppConfig>;
+    const config = await getConfig();
 
     if (botName !== undefined) {
-      const config = await getConfig();
       config.botName = botName;
-      await saveConfig(config);
     }
 
+    if (claudeModel !== undefined) {
+      if (!CLAUDE_MODELS.includes(claudeModel)) {
+        res
+          .status(400)
+          .json({
+            error: `Invalid model. Must be one of: ${CLAUDE_MODELS.join(", ")}`,
+          });
+        return;
+      }
+      config.claudeModel = claudeModel;
+    }
+
+    await saveConfig(config);
+
     const updatedConfig = await getConfig();
-    res.json({ botName: updatedConfig.botName, botDisplayName: getBotDisplayName() });
+    res.json({
+      botName: updatedConfig.botName,
+      botDisplayName: getBotDisplayName(),
+      claudeModel: updatedConfig.claudeModel,
+      availableModels: CLAUDE_MODELS,
+    });
   } catch (error) {
     console.error("Error updating config:", error);
     res.status(500).json({ error: (error as Error).message });

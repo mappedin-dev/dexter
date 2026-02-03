@@ -4,8 +4,7 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "docker-compose up",
-    "dev:down": "docker-compose down",
-    "dev:rebuild": "docker-compose down && docker-compose build --no-cache && docker-compose up",
+    "dev:rebuild": "pnpm build && docker-compose down -v && docker-compose build --no-cache && docker-compose up",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "test": "pnpm -r --if-present test",

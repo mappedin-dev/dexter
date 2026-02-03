@@ -2,26 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, type JobData } from "../api/client";
+import { StatusBadge } from "../components/StatusBadge";
+import { LoadingSpinner } from "../components/LoadingSpinner";
+import { ErrorCard } from "../components/ErrorCard";
+import { EmptyState } from "../components/EmptyState";
 
 const STATUS_OPTIONS = ["all", "waiting", "active", "completed", "failed", "delayed"] as const;
-
-function StatusBadge({ status }: { status: JobData["status"] }) {
-  const styles: Record<JobData["status"], string> = {
-    waiting: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    active: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-    completed: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-    failed: "bg-red-500/20 text-red-400 border-red-500/30",
-    delayed: "bg-dark-600/50 text-dark-300 border-dark-500/30",
-  };
-
-  const { t } = useTranslation();
-
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${styles[status]}`}>
-      {t(`jobs.status.${status}`)}
-    </span>
-  );
-}
 
 function JobRow({ job }: { job: JobData }) {
   const { t } = useTranslation();
@@ -54,7 +40,7 @@ function JobRow({ job }: { job: JobData }) {
         </Link>
       </td>
       <td className="py-4 px-4">
-        <StatusBadge status={job.status} />
+        <StatusBadge status={job.status} size="sm" />
       </td>
       <td className="py-4 px-4 text-sm text-dark-300 capitalize">{source}</td>
       <td className="py-4 px-4 text-sm text-dark-400">{time}</td>
@@ -115,28 +101,11 @@ export default function Jobs() {
         ))}
       </div>
 
-      {isLoading && (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+      {isLoading && <LoadingSpinner />}
 
-      {error && (
-        <div className="glass-card p-6 border-red-500/30">
-          <p className="text-red-400">{t("jobs.errorLoading", { message: (error as Error).message })}</p>
-        </div>
-      )}
+      {error && <ErrorCard message={t("jobs.errorLoading", { message: (error as Error).message })} />}
 
-      {jobs && jobs.length === 0 && (
-        <div className="glass-card p-12 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-dark-800 flex items-center justify-center">
-            <svg className="w-8 h-8 text-dark-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-            </svg>
-          </div>
-          <p className="text-dark-400">{t("jobs.noJobs")}</p>
-        </div>
-      )}
+      {jobs && jobs.length === 0 && <EmptyState message={t("jobs.noJobs")} />}
 
       {jobs && jobs.length > 0 && (
         <div className="glass-card overflow-hidden">

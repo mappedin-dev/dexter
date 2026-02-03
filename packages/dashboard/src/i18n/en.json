@@ -63,9 +63,13 @@
     "errorLoading": "Error loading config: {{message}}",
     "botName": {
       "label": "Bot Name",
+      "description": "Mention the bot with <name>@{{botName}}</name>",
       "placeholder": "mapthew",
-      "helpFormat": "Lowercase a-z, 0-9, dashes, and underscores only.",
-      "helpMention": "Mention the bot with <name>@{{botName}}</name>."
+      "tip": "Lowercase letters (a-z), numbers (0-9), dashes (-), and underscores (_)."
+    },
+    "claudeModel": {
+      "label": "Model",
+      "description": "The model used when processing jobs"
     }
   }
 }

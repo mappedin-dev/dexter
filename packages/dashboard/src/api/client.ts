@@ -28,6 +28,8 @@ export interface JobData {
 export interface Config {
   botName: string;
   botDisplayName: string;
+  claudeModel: string;
+  availableModels: string[];
 }
 
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {

@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
-import type { Job } from "@mapthew/shared";
+import { type Job, getClaudeModel } from "@mapthew/shared";
 import { buildPrompt } from "./prompt.js";
 import { getReadableId } from "./utils.js";
 
@@ -19,6 +19,7 @@ export async function invokeClaudeCode(
   workDir: string
 ): Promise<{ success: boolean; output: string; error?: string }> {
   const prompt = buildPrompt(job);
+  const model = await getClaudeModel();
 
   return new Promise((resolve) => {
     // Pass prompt as argument (prompt must come right after --print)
@@ -30,14 +31,15 @@ export async function invokeClaudeCode(
       "--mcp-config",
       mcpConfigPath,
       "--dangerously-skip-permissions",
+      "--model",
+      model,
     ];
 
-    // Add model if specified via environment variable
-    if (process.env.CLAUDE_MODEL) {
-      args.push("--model", process.env.CLAUDE_MODEL);
-    }
-
-    console.log(`Invoking Claude Code CLI for ${getReadableId(job)}...`);
+    console.log(
+      `Invoking Claude Code CLI for ${getReadableId(
+        job
+      )} with model ${model}...`
+    );
 
     const proc = spawn("claude", args, {
       cwd: workDir,

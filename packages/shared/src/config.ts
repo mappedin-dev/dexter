@@ -9,14 +9,28 @@ const VALID_BOT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 const CONFIG_KEY = "mapthew:config";
 
 /**
+ * Available Claude models
+ */
+export const CLAUDE_MODELS = [
+  "claude-sonnet-4-5",
+  "claude-haiku-4-5",
+  "claude-opus-4-5",
+] as const;
+
+export type ClaudeModel = (typeof CLAUDE_MODELS)[number];
+
+/**
  * Application configuration stored in Redis
  */
 export interface AppConfig {
   botName: string;
+  claudeModel: ClaudeModel;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
   botName: process.env.BOT_NAME ?? "mapthew",
+  claudeModel:
+    (process.env.CLAUDE_MODEL as ClaudeModel) ?? "claude-sonnet-4-latest",
 };
 
 /**
@@ -137,4 +151,12 @@ export function getQueueName(): string {
  */
 export function getBranchPrefix(): string {
   return `${getBotName()}-bot`;
+}
+
+/**
+ * Get the Claude model to use
+ */
+export async function getClaudeModel(): Promise<ClaudeModel> {
+  const config = await getConfig();
+  return config.claudeModel;
 }
