@@ -1,8 +1,90 @@
+import { Redis } from "ioredis";
+
 // Internal state - can be updated at runtime
 let botName: string | null = null;
+let redisClient: Redis | null = null;
 
 // Valid bot name pattern: lowercase alphanumeric, dashes, underscores (safe for git branches and queue names)
 const VALID_BOT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+const CONFIG_KEY = "mapthew:config";
+
+/**
+ * Available Claude models
+ */
+export const CLAUDE_MODELS = [
+  "claude-sonnet-4-5",
+  "claude-haiku-4-5",
+  "claude-opus-4-5",
+] as const;
+
+export type ClaudeModel = (typeof CLAUDE_MODELS)[number];
+
+/**
+ * Application configuration stored in Redis
+ */
+export interface AppConfig {
+  botName: string;
+  claudeModel: ClaudeModel;
+}
+
+const DEFAULT_CONFIG: AppConfig = {
+  botName: process.env.BOT_NAME ?? "mapthew",
+  claudeModel:
+    (process.env.CLAUDE_MODEL as ClaudeModel) ?? "claude-sonnet-4-latest",
+};
+
+/**
+ * Initialize the Redis client for config storage
+ */
+export function initConfigStore(redisUrl: string): void {
+  redisClient = new Redis(redisUrl);
+}
+
+/**
+ * Get the current config from Redis (or defaults)
+ */
+export async function getConfig(): Promise<AppConfig> {
+  if (!redisClient) {
+    return { ...DEFAULT_CONFIG, botName: getBotName() };
+  }
+
+  try {
+    const data = await redisClient.get(CONFIG_KEY);
+    if (data) {
+      const config = JSON.parse(data) as AppConfig;
+      // Update in-memory botName when loading from Redis
+      if (config.botName && isValidBotName(config.botName)) {
+        botName = config.botName;
+      }
+      return config;
+    }
+  } catch (error) {
+    console.error("Error loading config from Redis:", error);
+  }
+
+  return { ...DEFAULT_CONFIG, botName: getBotName() };
+}
+
+/**
+ * Save config to Redis
+ */
+export async function saveConfig(config: AppConfig): Promise<void> {
+  if (!isValidBotName(config.botName)) {
+    throw new Error(
+      `Invalid bot name "${config.botName}" - must be lowercase alphanumeric with dashes/underscores, starting with alphanumeric (max 32 chars)`
+    );
+  }
+
+  // Update in-memory state
+  botName = config.botName;
+
+  if (!redisClient) {
+    console.warn("Redis client not initialized, config not persisted");
+    return;
+  }
+
+  await redisClient.set(CONFIG_KEY, JSON.stringify(config));
+}
 
 /**
  * Validate a bot name for use in branches and queue names
@@ -25,6 +107,15 @@ export function getBotName(): string {
     return "mapthew";
   }
   return name;
+}
+
+/**
+ * Get the bot name formatted for display (first letter capitalized)
+ * e.g., "mapthew" -> "Mapthew", "code-bot" -> "Code-bot"
+ */
+export function getBotDisplayName(): string {
+  const name = getBotName();
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 /**
@@ -60,4 +151,12 @@ export function getQueueName(): string {
  */
 export function getBranchPrefix(): string {
   return `${getBotName()}-bot`;
+}
+
+/**
+ * Get the Claude model to use
+ */
+export async function getClaudeModel(): Promise<ClaudeModel> {
+  const config = await getConfig();
+  return config.claudeModel;
 }

@@ -4,8 +4,7 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "docker-compose up",
-    "dev:down": "docker-compose down",
-    "dev:rebuild": "docker-compose down && docker-compose build --no-cache && docker-compose up",
+    "dev:rebuild": "pnpm build && docker-compose down -v && docker-compose build --no-cache && docker-compose up",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "test": "pnpm -r --if-present test",
@@ -13,6 +12,7 @@
     "shared": "pnpm --filter @mapthew/shared",
     "webhook": "pnpm --filter @mapthew/webhook",
     "worker": "pnpm --filter @mapthew/worker",
+    "dashboard": "pnpm --filter @mapthew/dashboard",
     "mcp": "pnpm --filter @mapthew/integration-tests-mcp",
     "tunnel": "cloudflared tunnel --config cloudflare-tunnel-config.yml run"
   },
