@@ -41,6 +41,7 @@
       "status": "Status",
       "source": "Source",
       "created": "Created",
+      "finished": "Finished",
       "actions": "Actions"
     }
   },
@@ -51,9 +52,14 @@
     "notFound": "Job not found",
     "errorLoading": "Error loading job: {{message}}",
     "created": "Created",
-    "processed": "Processed",
+    "processed": "Started",
     "finished": "Finished",
+    "attempts": "Attempts",
+    "timeInQueue": "Time in queue",
+    "processingTime": "Processing time",
     "error": "Error",
+    "previousError": "Previous Attempt Failed",
+    "retriedSuccessfully": "This job failed on a previous attempt but succeeded on retry.",
     "jobData": "Job Data",
     "returnValue": "Return Value"
   },

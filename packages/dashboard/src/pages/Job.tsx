@@ -57,6 +57,21 @@ export default function Job() {
   const processedAt = job.processedOn ? new Date(job.processedOn).toLocaleString() : "-";
   const finishedAt = job.finishedOn ? new Date(job.finishedOn).toLocaleString() : "-";
 
+  const formatDuration = (ms: number) => {
+    if (ms < 1000) return `${ms}ms`;
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  };
+
+  const queueTime = job.processedOn ? formatDuration(job.processedOn - job.timestamp) : null;
+  const processTime = job.processedOn && job.finishedOn ? formatDuration(job.finishedOn - job.processedOn) : null;
+
   return (
     <div className="space-y-6">
       <Link to="/jobs" className="inline-flex items-center gap-2 text-dark-400 hover:text-white transition-colors">
@@ -91,7 +106,7 @@ export default function Job() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="glass-card p-5">
           <p className="text-xs font-medium text-dark-400 uppercase tracking-wider mb-1">{t("job.created")}</p>
           <p className="text-white font-medium">{createdAt}</p>
@@ -99,17 +114,31 @@ export default function Job() {
         <div className="glass-card p-5">
           <p className="text-xs font-medium text-dark-400 uppercase tracking-wider mb-1">{t("job.processed")}</p>
           <p className="text-white font-medium">{processedAt}</p>
+          {queueTime && <p className="text-dark-400 text-sm mt-1">{t("job.timeInQueue")}: {queueTime}</p>}
         </div>
         <div className="glass-card p-5">
           <p className="text-xs font-medium text-dark-400 uppercase tracking-wider mb-1">{t("job.finished")}</p>
           <p className="text-white font-medium">{finishedAt}</p>
+          {processTime && <p className="text-dark-400 text-sm mt-1">{t("job.processingTime")}: {processTime}</p>}
+        </div>
+        <div className="glass-card p-5">
+          <p className="text-xs font-medium text-dark-400 uppercase tracking-wider mb-1">{t("job.attempts")}</p>
+          <p className="text-white font-medium">{job.attemptsMade}</p>
         </div>
       </div>
 
-      {job.failedReason && (
+      {job.failedReason && job.status === "failed" && (
         <div className="glass-card p-6 border-red-500/30 bg-red-500/5">
           <h2 className="text-lg font-semibold text-red-400 mb-3">{t("job.error")}</h2>
           <pre className="text-red-300 text-sm whitespace-pre-wrap font-mono">{job.failedReason}</pre>
+        </div>
+      )}
+
+      {job.failedReason && job.status === "completed" && (
+        <div className="glass-card p-6 border-yellow-500/30 bg-yellow-500/5">
+          <h2 className="text-lg font-semibold text-yellow-400 mb-3">{t("job.previousError")}</h2>
+          <p className="text-dark-300 text-sm mb-3">{t("job.retriedSuccessfully")}</p>
+          <pre className="text-yellow-300/80 text-sm whitespace-pre-wrap font-mono">{job.failedReason}</pre>
         </div>
       )}
 

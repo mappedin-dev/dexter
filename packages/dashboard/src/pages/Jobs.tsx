@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, type JobData } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
@@ -11,6 +11,7 @@ const STATUS_OPTIONS = ["all", "waiting", "active", "completed", "failed", "dela
 
 function JobRow({ job }: { job: JobData }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const retryMutation = useMutation({
@@ -29,22 +30,33 @@ function JobRow({ job }: { job: JobData }) {
     },
   });
 
-  const time = new Date(job.timestamp).toLocaleString();
+  const createdAt = new Date(job.timestamp).toLocaleString();
+  const finishedAt = job.finishedOn ? new Date(job.finishedOn).toLocaleString() : "-";
   const source = (job.data as { source?: string }).source ?? "unknown";
 
+  const handleRowClick = () => {
+    navigate(`/jobs/${job.id}`);
+  };
+
+  const handleActionClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
-    <tr className="border-b border-dark-700/50 hover:bg-dark-800/50 transition-colors">
+    <tr
+      onClick={handleRowClick}
+      className="border-b border-dark-700/50 hover:bg-dark-800/50 transition-colors cursor-pointer"
+    >
       <td className="py-4 px-4">
-        <Link to={`/jobs/${job.id}`} className="text-accent hover:text-accent-hover font-mono text-sm transition-colors">
-          {job.id}
-        </Link>
+        <span className="text-accent font-mono text-sm">{job.id}</span>
       </td>
       <td className="py-4 px-4">
         <StatusBadge status={job.status} size="sm" />
       </td>
       <td className="py-4 px-4 text-sm text-dark-300 capitalize">{source}</td>
-      <td className="py-4 px-4 text-sm text-dark-400">{time}</td>
-      <td className="py-4 px-4">
+      <td className="py-4 px-4 text-sm text-dark-400">{createdAt}</td>
+      <td className="py-4 px-4 text-sm text-dark-400">{finishedAt}</td>
+      <td className="py-4 px-4" onClick={handleActionClick}>
         <div className="flex gap-2">
           {job.status === "failed" && (
             <button
@@ -116,6 +128,7 @@ export default function Jobs() {
                 <th className="text-left py-4 px-4 text-xs font-semibold text-dark-400 uppercase tracking-wider">{t("jobs.table.status")}</th>
                 <th className="text-left py-4 px-4 text-xs font-semibold text-dark-400 uppercase tracking-wider">{t("jobs.table.source")}</th>
                 <th className="text-left py-4 px-4 text-xs font-semibold text-dark-400 uppercase tracking-wider">{t("jobs.table.created")}</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-dark-400 uppercase tracking-wider">{t("jobs.table.finished")}</th>
                 <th className="text-left py-4 px-4 text-xs font-semibold text-dark-400 uppercase tracking-wider">{t("jobs.table.actions")}</th>
               </tr>
             </thead>

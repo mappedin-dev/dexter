@@ -46,27 +46,21 @@ router.get("/queue/jobs", async (req, res) => {
 
     const jobs = await queue.getJobs([...statuses], 0, limit - 1);
 
-    const jobData = jobs.map((job) => ({
-      id: job.id,
-      name: job.name,
-      data: job.data,
-      status: job.finishedOn
-        ? job.failedReason
-          ? "failed"
-          : "completed"
-        : job.processedOn
-        ? "active"
-        : job.delay && job.delay > 0
-        ? "delayed"
-        : "waiting",
-      progress: job.progress ?? 0,
-      attemptsMade: job.attemptsMade ?? 0,
-      timestamp: job.timestamp,
-      processedOn: job.processedOn,
-      finishedOn: job.finishedOn,
-      failedReason: job.failedReason,
-      returnvalue: job.returnvalue,
-    }));
+    const jobData = await Promise.all(
+      jobs.map(async (job) => ({
+        id: job.id,
+        name: job.name,
+        data: job.data,
+        status: await job.getState(),
+        progress: job.progress ?? 0,
+        attemptsMade: job.attemptsMade ?? 0,
+        timestamp: job.timestamp,
+        processedOn: job.processedOn,
+        finishedOn: job.finishedOn,
+        failedReason: job.failedReason,
+        returnvalue: job.returnvalue,
+      }))
+    );
 
     res.json(jobData);
   } catch (error) {
@@ -88,15 +82,7 @@ router.get("/queue/jobs/:id", async (req, res) => {
       id: job.id,
       name: job.name,
       data: job.data,
-      status: job.finishedOn
-        ? job.failedReason
-          ? "failed"
-          : "completed"
-        : job.processedOn
-        ? "active"
-        : job.delay && job.delay > 0
-        ? "delayed"
-        : "waiting",
+      status: await job.getState(),
       progress: job.progress ?? 0,
       attemptsMade: job.attemptsMade ?? 0,
       timestamp: job.timestamp,
