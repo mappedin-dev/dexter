@@ -51,12 +51,34 @@ export async function getOrCreateWorkspace(issueKey: string): Promise<string> {
 }
 
 /**
+ * Get the Claude home directory path
+ * Claude Code CLI stores sessions in ~/.claude/projects/
+ */
+function getClaudeHomeDir(): string {
+  // In Docker, HOME is typically /home/worker
+  const home = process.env.HOME || "/home/worker";
+  return path.join(home, ".claude");
+}
+
+/**
+ * Encode a workspace path to Claude's project directory name format
+ * Claude replaces / with - in the path
+ */
+function encodeWorkspacePath(workDir: string): string {
+  return workDir.replace(/\//g, "-");
+}
+
+/**
  * Check if a workspace has an existing Claude session
+ * Claude Code CLI stores sessions in ~/.claude/projects/{encoded-path}
  */
 export async function hasExistingSession(workDir: string): Promise<boolean> {
-  const claudeDir = path.join(workDir, ".claude");
+  const claudeProjectsDir = path.join(getClaudeHomeDir(), "projects");
+  const encodedPath = encodeWorkspacePath(workDir);
+  const sessionDir = path.join(claudeProjectsDir, encodedPath);
+
   try {
-    const stat = await fs.stat(claudeDir);
+    const stat = await fs.stat(sessionDir);
     return stat.isDirectory();
   } catch {
     return false;

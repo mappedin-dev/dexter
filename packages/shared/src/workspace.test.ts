@@ -17,31 +17,38 @@ import {
 
 // Use a unique test directory for each test run
 let testWorkspacesDir: string;
+let testHomeDir: string;
 let originalWorkspacesDir: string | undefined;
 let originalMaxSessions: string | undefined;
+let originalHome: string | undefined;
 
 describe("workspace", () => {
   beforeEach(async () => {
     // Save original env values
     originalWorkspacesDir = process.env.WORKSPACES_DIR;
     originalMaxSessions = process.env.MAX_SESSIONS;
+    originalHome = process.env.HOME;
 
-    // Create a unique test directory
-    testWorkspacesDir = path.join(
-      os.tmpdir(),
-      `dexter-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    );
+    // Create unique test directories
+    const testId = `dexter-test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    testWorkspacesDir = path.join(os.tmpdir(), testId);
+    testHomeDir = path.join(os.tmpdir(), `${testId}-home`);
     await fs.mkdir(testWorkspacesDir, { recursive: true });
+    await fs.mkdir(path.join(testHomeDir, ".claude", "projects"), {
+      recursive: true,
+    });
 
     // Set environment variables directly
     process.env.WORKSPACES_DIR = testWorkspacesDir;
     process.env.MAX_SESSIONS = "3";
+    process.env.HOME = testHomeDir;
   });
 
   afterEach(async () => {
-    // Clean up test directory
+    // Clean up test directories
     try {
       await fs.rm(testWorkspacesDir, { recursive: true, force: true });
+      await fs.rm(testHomeDir, { recursive: true, force: true });
     } catch {
       // Ignore cleanup errors
     }
@@ -56,6 +63,11 @@ describe("workspace", () => {
       process.env.MAX_SESSIONS = originalMaxSessions;
     } else {
       delete process.env.MAX_SESSIONS;
+    }
+    if (originalHome !== undefined) {
+      process.env.HOME = originalHome;
+    } else {
+      delete process.env.HOME;
     }
   });
 
@@ -113,24 +125,35 @@ describe("workspace", () => {
   });
 
   describe("hasExistingSession", () => {
-    it("returns false when .claude directory does not exist", async () => {
+    // Helper to get the Claude session path for a workspace
+    function getClaudeSessionPath(workDir: string): string {
+      const encoded = workDir.replace(/\//g, "-");
+      return path.join(testHomeDir, ".claude", "projects", encoded);
+    }
+
+    it("returns false when Claude session directory does not exist", async () => {
       const workDir = path.join(testWorkspacesDir, "no-session");
       await fs.mkdir(workDir, { recursive: true });
 
       expect(await hasExistingSession(workDir)).toBe(false);
     });
 
-    it("returns true when .claude directory exists", async () => {
+    it("returns true when Claude session directory exists", async () => {
       const workDir = path.join(testWorkspacesDir, "has-session");
-      await fs.mkdir(path.join(workDir, ".claude"), { recursive: true });
+      await fs.mkdir(workDir, { recursive: true });
+      // Create Claude session in ~/.claude/projects/{encoded-path}
+      await fs.mkdir(getClaudeSessionPath(workDir), { recursive: true });
 
       expect(await hasExistingSession(workDir)).toBe(true);
     });
 
-    it("returns false when .claude is a file not a directory", async () => {
+    it("returns false when session path is a file not a directory", async () => {
       const workDir = path.join(testWorkspacesDir, "claude-file");
       await fs.mkdir(workDir, { recursive: true });
-      await fs.writeFile(path.join(workDir, ".claude"), "not a directory");
+      // Create parent directories but make the session path a file
+      const sessionPath = getClaudeSessionPath(workDir);
+      await fs.mkdir(path.dirname(sessionPath), { recursive: true });
+      await fs.writeFile(sessionPath, "not a directory");
 
       expect(await hasExistingSession(workDir)).toBe(false);
     });

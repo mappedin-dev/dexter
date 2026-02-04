@@ -3,9 +3,9 @@
 # Webhook requests require HMAC-SHA256 signatures.
 # Run: pnpm requests:init to compute and populate the signature in .env
 
-@baseUrl = http://localhost:3500
+@baseUrl = http://localhost:3000
 @tunnelUrl = https://darrenchay.mappedin.io
-@ticketKey = SRV-3244
+@ticketKey = MPTW-11
 @botName = mapthew
 @jiraSignature = {{$dotenv REQUESTS_HTTP_JIRA_WEBHOOK_SIGNATURE}}
 
