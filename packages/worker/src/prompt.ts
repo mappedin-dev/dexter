@@ -12,6 +12,28 @@ import {
 // ES module equivalent of __dirname
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// JIRA post-processing config (Claude handles via MCP)
+const JIRA_LABEL_ADD = process.env.JIRA_LABEL_ADD || "";
+const JIRA_LABEL_REMOVE = process.env.JIRA_LABEL_REMOVE || "";
+
+/**
+ * Build JIRA post-processing instructions based on config
+ */
+function buildJiraPostProcessing(): string {
+  const steps: string[] = [];
+
+  if (JIRA_LABEL_ADD) {
+    steps.push(`- Add label: "${JIRA_LABEL_ADD}"`);
+  }
+  if (JIRA_LABEL_REMOVE) {
+    steps.push(`- Remove label: "${JIRA_LABEL_REMOVE}" (if present)`);
+  }
+  // Always include transition instruction - Claude figures out the right status
+  steps.push(`- Transition to an appropriate status (e.g., "Code Review", "In Review", "Ready for Review") based on available transitions`);
+
+  return steps.join("\n");
+}
+
 // Load all instruction markdown files at startup
 const instructionsDir = path.join(__dirname, "..", "instructions");
 
@@ -55,6 +77,11 @@ export function buildPrompt(job: Job): string {
     // Jira context (defaults to "unknown")
     "jira.issueKey": isJiraJob(job) ? job.issueKey : "unknown",
   };
+
+  // Add JIRA post-processing config to context
+  if (isJiraJob(job)) {
+    context["jira.postProcessing"] = buildJiraPostProcessing();
+  }
 
   // Process all instruction templates
   const prompt = instructionTemplates
