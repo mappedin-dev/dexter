@@ -160,3 +160,7 @@ pnpm mcp test
 ## Architecture
 
 See [docs/architecture.md](./docs/architecture.md) for detailed system design and workflow diagrams.
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
