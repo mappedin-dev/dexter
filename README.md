@@ -160,3 +160,7 @@ pnpm mcp test
 ## Architecture
 
 See [docs/architecture.md](./docs/architecture.md) for detailed system design and workflow diagrams.
+
+## License
+
+This project is proprietary software owned by Mappedin Inc.
