@@ -29,6 +29,9 @@ services:
       context: .
       dockerfile: packages/worker/Dockerfile
       target: prod
+    volumes:
+      - mapthew-workspaces:/tmp/mapthew-workspaces  # Persist session workspaces
+      - claude-sessions:/home/worker/.claude         # Persist Claude CLI sessions
     environment:
       - REDIS_URL=redis://redis:6379
       - JIRA_BASE_URL
@@ -40,3 +43,7 @@ services:
     restart: unless-stopped
     depends_on:
       - redis
+
+volumes:
+  mapthew-workspaces:  # Named volume for workspace persistence
+  claude-sessions:     # Named volume for Claude CLI session persistence

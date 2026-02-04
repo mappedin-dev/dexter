@@ -15,6 +15,12 @@ RUN addgroup -S worker && adduser -S worker -G worker
 WORKDIR /app
 RUN chown -R worker:worker /app
 
+# Create workspaces directory with proper permissions (for session persistence)
+RUN mkdir -p /tmp/mapthew-workspaces && chown -R worker:worker /tmp/mapthew-workspaces
+
+# Create Claude CLI directory with proper permissions (for session persistence)
+RUN mkdir -p /home/worker/.claude && chown -R worker:worker /home/worker/.claude
+
 COPY pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/worker/package.json ./packages/worker/

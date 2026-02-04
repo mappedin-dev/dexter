@@ -8,7 +8,7 @@ import type { JiraCredentials, CommentResult } from "./types.js";
 export function verifyHmacSignature(
   secret: string,
   payload: string,
-  signature: string
+  signature: string,
 ): boolean {
   if (!signature) return false;
 
@@ -22,7 +22,7 @@ export function verifyHmacSignature(
   try {
     return timingSafeEqual(
       Buffer.from(sig, "hex"),
-      Buffer.from(expectedSignature, "hex")
+      Buffer.from(expectedSignature, "hex"),
     );
   } catch {
     return false;
@@ -35,7 +35,7 @@ export function verifyHmacSignature(
 export async function postJiraComment(
   credentials: JiraCredentials,
   issueKey: string,
-  comment: string
+  comment: string,
 ): Promise<CommentResult> {
   if (!credentials.baseUrl || !credentials.email || !credentials.apiToken) {
     console.warn("JIRA credentials not configured - skipping comment");
@@ -43,7 +43,7 @@ export async function postJiraComment(
   }
 
   const auth = Buffer.from(
-    `${credentials.email}:${credentials.apiToken}`
+    `${credentials.email}:${credentials.apiToken}`,
   ).toString("base64");
 
   try {
@@ -67,7 +67,7 @@ export async function postJiraComment(
             ],
           },
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -86,14 +86,14 @@ export async function postJiraComment(
 }
 
 /**
- * Post a comment to a GitHub PR
+ * Post a comment to a GitHub PR or issue
  */
 export async function postGitHubComment(
   token: string,
   owner: string,
   repo: string,
   number: number,
-  comment: string
+  comment: string,
 ): Promise<CommentResult> {
   if (!token) {
     console.warn("GITHUB_TOKEN not configured - skipping comment");
@@ -112,7 +112,7 @@ export async function postGitHubComment(
           "X-GitHub-Api-Version": "2022-11-28",
         },
         body: JSON.stringify({ body: comment }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -127,5 +127,63 @@ export async function postGitHubComment(
       error instanceof Error ? error.message : "Unknown error";
     console.error("Failed to post GitHub comment:", errorMessage);
     return { success: false, error: errorMessage };
+  }
+}
+
+/**
+ * GitHub PR details
+ */
+export interface GitHubPRDetails {
+  number: number;
+  title: string;
+  branchName: string;
+  baseBranch: string;
+}
+
+/**
+ * Fetch PR details from GitHub API
+ */
+export async function fetchGitHubPRDetails(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<GitHubPRDetails | null> {
+  if (!token) {
+    console.warn("GITHUB_TOKEN not configured - cannot fetch PR details");
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to fetch GitHub PR details:", errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    return {
+      number: data.number,
+      title: data.title,
+      branchName: data.head.ref,
+      baseBranch: data.base.ref,
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    console.error("Failed to fetch GitHub PR details:", errorMessage);
+    return null;
   }
 }

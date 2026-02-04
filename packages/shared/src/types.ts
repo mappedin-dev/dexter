@@ -27,6 +27,8 @@ export interface GitHubJob extends BaseJob {
   prNumber?: number;
   issueNumber?: number;
   branchId?: string;
+  /** PR branch name (used to extract Jira issue key for session linking) */
+  branchName?: string;
 }
 
 /**
@@ -46,9 +48,33 @@ export interface AdminJob extends BaseJob {
 }
 
 /**
+ * Session cleanup job (triggered by PR merge)
+ */
+export interface SessionCleanupJob {
+  type: "session-cleanup";
+  issueKey: string;
+  reason: "pr-merged" | "manual";
+  owner?: string;
+  repo?: string;
+  prNumber?: number;
+}
+
+/**
  * Discriminated union of all job types
  */
 export type Job = JiraJob | GitHubJob | AdminJob;
+
+/**
+ * Union of all queue job types (includes cleanup jobs)
+ */
+export type QueueJob = Job | SessionCleanupJob;
+
+/**
+ * Type guard for SessionCleanupJob
+ */
+export function isSessionCleanupJob(job: QueueJob): job is SessionCleanupJob {
+  return "type" in job && job.type === "session-cleanup";
+}
 
 /**
  * Type guard for JiraJob
@@ -163,7 +189,7 @@ export function isGitHubPRCommentEvent(payload: GitHubWebhookPayload): boolean {
  * Check if a GitHub webhook payload is an issue comment event
  */
 export function isGitHubIssueCommentEvent(
-  payload: GitHubWebhookPayload
+  payload: GitHubWebhookPayload,
 ): boolean {
   return (
     payload.action === "created" && payload.issue?.pull_request === undefined
