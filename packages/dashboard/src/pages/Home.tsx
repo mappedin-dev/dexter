@@ -21,7 +21,7 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-4">
         <Link
           to="/new-task"
-          className="group col-span-2 px-6 py-4 bg-accent/10 hover:bg-accent/20 border border-accent/70 hover:border-accent rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-accent/20"
+          className="group col-span-2 px-6 py-4 bg-[#1a1a2e] hover:bg-[#1f1f38] border border-accent/70 hover:border-accent rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-accent/20"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center group-hover:bg-accent/30 transition-colors">

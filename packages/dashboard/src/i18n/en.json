@@ -32,9 +32,9 @@
   },
   "home": {
     "welcome": "Hi, I'm {{name}}!",
-    "description": "I'm your AI intern. Come see what I'm working on.",
+    "description": "I'm your AI intern. Come see what I'm up to.",
     "viewTasks": "Tasks",
-    "viewTasksDescription": "See what I've been doing",
+    "viewTasksDescription": "See what I'm working on",
     "settings": "Settings",
     "settingsDescription": "Manage how I work"
   },
@@ -90,6 +90,25 @@
     "claudeModel": {
       "label": "Model",
       "description": "The model used when processing tasks"
+    },
+    "integrations": {
+      "title": "Integrations",
+      "jira": {
+        "title": "JIRA",
+        "baseUrl": "Base URL",
+        "baseUrlPlaceholder": "https://yourcompany.atlassian.net",
+        "baseUrlInvalid": "Must be a valid HTTPS URL",
+        "email": "Email",
+        "apiToken": "API Token",
+        "webhookSecret": "Webhook Secret"
+      },
+      "github": {
+        "title": "GitHub",
+        "token": "Access Token",
+        "webhookSecret": "Webhook Secret"
+      },
+      "notConfigured": "Not configured",
+      "notEditable": "Must be set as an environment variable"
     },
     "version": "Version {{version}}"
   },

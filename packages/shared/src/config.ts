@@ -25,12 +25,14 @@ export type ClaudeModel = (typeof CLAUDE_MODELS)[number];
 export interface AppConfig {
   botName: string;
   claudeModel: ClaudeModel;
+  jiraBaseUrl: string;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
   botName: process.env.BOT_NAME ?? "mapthew",
   claudeModel:
     (process.env.CLAUDE_MODEL as ClaudeModel) ?? "claude-sonnet-4-latest",
+  jiraBaseUrl: process.env.JIRA_BASE_URL ?? "",
 };
 
 /**
@@ -56,7 +58,11 @@ export async function getConfig(): Promise<AppConfig> {
       if (config.botName && isValidBotName(config.botName)) {
         botName = config.botName;
       }
-      return config;
+      // Ensure jiraBaseUrl has a fallback
+      return {
+        ...DEFAULT_CONFIG,
+        ...config,
+      };
     }
   } catch (error) {
     console.error("Error loading config from Redis:", error);
@@ -72,6 +78,12 @@ export async function saveConfig(config: AppConfig): Promise<void> {
   if (!isValidBotName(config.botName)) {
     throw new Error(
       `Invalid bot name "${config.botName}" - must be lowercase alphanumeric with dashes/underscores, starting with alphanumeric (max 32 chars)`
+    );
+  }
+
+  if (!isValidJiraUrl(config.jiraBaseUrl)) {
+    throw new Error(
+      `Invalid JIRA base URL "${config.jiraBaseUrl}" - must be a valid HTTPS URL`
     );
   }
 
@@ -92,6 +104,20 @@ export async function saveConfig(config: AppConfig): Promise<void> {
  */
 export function isValidBotName(name: string): boolean {
   return VALID_BOT_NAME_PATTERN.test(name) && name.length <= 32;
+}
+
+/**
+ * Validate a JIRA base URL
+ * Must be a valid HTTPS URL
+ */
+export function isValidJiraUrl(url: string): boolean {
+  if (!url) return true; // Empty is allowed (not configured)
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 /**

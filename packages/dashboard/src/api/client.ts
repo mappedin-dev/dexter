@@ -33,6 +33,18 @@ export interface Config {
   jiraBaseUrl: string;
 }
 
+export interface SecretsStatus {
+  jira: {
+    email: string;
+    tokenMasked: string;
+    webhookSecretMasked: string;
+  };
+  github: {
+    tokenMasked: string;
+    webhookSecretMasked: string;
+  };
+}
+
 // Search result types
 export interface SearchResult {
   id: string;
@@ -159,4 +171,7 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(config),
     }),
+
+  // Secrets endpoint (read-only)
+  getSecrets: () => fetchJSON<SecretsStatus>("/secrets"),
 };

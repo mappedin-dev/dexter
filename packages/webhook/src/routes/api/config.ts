@@ -4,9 +4,9 @@ import {
   saveConfig,
   getBotDisplayName,
   CLAUDE_MODELS,
+  isValidJiraUrl,
   type AppConfig,
 } from "@mapthew/shared";
-import { JIRA_BASE_URL } from "../../config.js";
 
 const router: Router = Router();
 
@@ -19,7 +19,7 @@ router.get("/", async (_req, res) => {
       botDisplayName: getBotDisplayName(),
       claudeModel: config.claudeModel,
       availableModels: CLAUDE_MODELS,
-      jiraBaseUrl: JIRA_BASE_URL,
+      jiraBaseUrl: config.jiraBaseUrl,
     });
   } catch (error) {
     console.error("Error getting config:", error);
@@ -30,11 +30,15 @@ router.get("/", async (_req, res) => {
 // PUT /api/config
 router.put("/", async (req, res) => {
   try {
-    const { botName, claudeModel } = req.body as Partial<AppConfig>;
+    const { botName, claudeModel, jiraBaseUrl } = req.body as Partial<AppConfig>;
     const config = await getConfig();
 
     if (botName !== undefined) {
+      const oldBotName = config.botName;
       config.botName = botName;
+      if (oldBotName !== botName) {
+        console.log(`Bot name updated: "${oldBotName}" -> "${botName}"`);
+      }
     }
 
     if (claudeModel !== undefined) {
@@ -47,7 +51,18 @@ router.put("/", async (req, res) => {
       config.claudeModel = claudeModel;
     }
 
+    if (jiraBaseUrl !== undefined) {
+      if (!isValidJiraUrl(jiraBaseUrl)) {
+        res.status(400).json({
+          error: "Invalid JIRA base URL. Must be a valid HTTPS URL.",
+        });
+        return;
+      }
+      config.jiraBaseUrl = jiraBaseUrl;
+    }
+
     await saveConfig(config);
+    console.log(`Config updated: botName=${config.botName}, claudeModel=${config.claudeModel}, jiraBaseUrl=${config.jiraBaseUrl}`);
 
     const updatedConfig = await getConfig();
     res.json({
@@ -55,7 +70,7 @@ router.put("/", async (req, res) => {
       botDisplayName: getBotDisplayName(),
       claudeModel: updatedConfig.claudeModel,
       availableModels: CLAUDE_MODELS,
-      jiraBaseUrl: JIRA_BASE_URL,
+      jiraBaseUrl: updatedConfig.jiraBaseUrl,
     });
   } catch (error) {
     console.error("Error updating config:", error);
