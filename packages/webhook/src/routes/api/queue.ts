@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { queue } from "../../config.js";
-import { type AdminJob } from "@mapthew/shared";
+import { type AdminJob, type QueueStats, type JobData, type AdminJobContext } from "@mapthew/shared";
 
 const router: Router = Router();
 
@@ -8,7 +8,7 @@ const router: Router = Router();
 router.get("/", async (_req, res) => {
   try {
     const counts = await queue.getJobCounts();
-    res.json({
+    const stats: QueueStats = {
       name: queue.name,
       counts: {
         waiting: counts.waiting ?? 0,
@@ -17,7 +17,8 @@ router.get("/", async (_req, res) => {
         failed: counts.failed ?? 0,
         delayed: counts.delayed ?? 0,
       },
-    });
+    };
+    res.json(stats);
   } catch (error) {
     console.error("Error getting queue stats:", error);
     res.status(500).json({ error: "Failed to get queue stats" });
@@ -36,20 +37,23 @@ router.get("/jobs", async (req, res) => {
 
     const jobs = await queue.getJobs([...statuses], 0, limit - 1);
 
-    const jobData = await Promise.all(
-      jobs.map(async (job) => ({
-        id: job.id,
-        name: job.name,
-        data: job.data,
-        status: await job.getState(),
-        progress: job.progress ?? 0,
-        attemptsMade: job.attemptsMade ?? 0,
-        timestamp: job.timestamp,
-        processedOn: job.processedOn,
-        finishedOn: job.finishedOn,
-        failedReason: job.failedReason,
-        returnvalue: job.returnvalue,
-      }))
+    const jobData: JobData[] = await Promise.all(
+      jobs.map(async (job) => {
+        const status = await job.getState();
+        return {
+          id: job.id!,
+          name: job.name,
+          data: JSON.stringify(job.data),
+          status: status === "unknown" ? "waiting" : status, // Treat unknown as waiting
+          progress: job.progress ?? 0,
+          attemptsMade: job.attemptsMade ?? 0,
+          timestamp: job.timestamp,
+          processedOn: job.processedOn,
+          finishedOn: job.finishedOn,
+          failedReason: job.failedReason ?? "",
+          returnvalue: JSON.stringify(job.returnvalue ?? null),
+        };
+      })
     );
 
     res.json(jobData);
@@ -68,19 +72,21 @@ router.get("/jobs/:id", async (req, res) => {
       return;
     }
 
-    res.json({
-      id: job.id,
+    const status = await job.getState();
+    const jobData: JobData = {
+      id: job.id!,
       name: job.name,
-      data: job.data,
-      status: await job.getState(),
+      data: JSON.stringify(job.data),
+      status: status === "unknown" ? "waiting" : status, // Treat unknown as waiting
       progress: job.progress ?? 0,
       attemptsMade: job.attemptsMade ?? 0,
       timestamp: job.timestamp,
       processedOn: job.processedOn,
       finishedOn: job.finishedOn,
-      failedReason: job.failedReason,
-      returnvalue: job.returnvalue,
-    });
+      failedReason: job.failedReason ?? "",
+      returnvalue: JSON.stringify(job.returnvalue ?? null),
+    };
+    res.json(jobData);
   } catch (error) {
     console.error("Error getting job:", error);
     res.status(500).json({ error: "Failed to get job" });
@@ -124,25 +130,7 @@ router.delete("/jobs/:id", async (req, res) => {
 // POST /api/queue/jobs - Create admin job
 router.post("/jobs", async (req, res) => {
   try {
-    const {
-      instruction,
-      jiraBoardId,
-      jiraIssueKey,
-      githubOwner,
-      githubRepo,
-      githubBranchId,
-      githubPrNumber,
-      githubIssueNumber,
-    } = req.body as {
-      instruction?: string;
-      jiraBoardId?: string;
-      jiraIssueKey?: string;
-      githubOwner?: string;
-      githubRepo?: string;
-      githubBranchId?: string;
-      githubPrNumber?: number;
-      githubIssueNumber?: number;
-    };
+    const { instruction, ...context } = req.body as { instruction?: string } & AdminJobContext;
 
     if (!instruction || typeof instruction !== "string") {
       res.status(400).json({ error: "instruction is required" });
@@ -153,15 +141,7 @@ router.post("/jobs", async (req, res) => {
       source: "admin",
       instruction: instruction.trim(),
       triggeredBy: "admin",
-      // Optional JIRA context
-      ...(jiraBoardId && { jiraBoardId }),
-      ...(jiraIssueKey && { jiraIssueKey }),
-      // Optional GitHub context
-      ...(githubOwner && { githubOwner }),
-      ...(githubRepo && { githubRepo }),
-      ...(githubBranchId && { githubBranchId }),
-      ...(githubPrNumber && { githubPrNumber }),
-      ...(githubIssueNumber && { githubIssueNumber }),
+      ...context,
     };
 
     const bullJob = await queue.add("process-ticket", job, {

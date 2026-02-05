@@ -1,4 +1,5 @@
-import { Redis } from "ioredis";
+import type { Redis } from "ioredis";
+import type { ClaudeModel, AppConfig } from "./types.js";
 
 // Internal state - can be updated at runtime
 let botName: string | null = null;
@@ -8,37 +9,19 @@ let redisClient: Redis | null = null;
 const VALID_BOT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 const CONFIG_KEY = "mapthew:config";
 
-/**
- * Available Claude models
- */
-export const CLAUDE_MODELS = [
-  "claude-sonnet-4-5",
-  "claude-haiku-4-5",
-  "claude-opus-4-5",
-] as const;
-
-export type ClaudeModel = (typeof CLAUDE_MODELS)[number];
-
-/**
- * Application configuration stored in Redis
- */
-export interface AppConfig {
-  botName: string;
-  claudeModel: ClaudeModel;
-  jiraBaseUrl: string;
-}
-
 const DEFAULT_CONFIG: AppConfig = {
   botName: process.env.BOT_NAME ?? "mapthew",
-  claudeModel:
-    (process.env.CLAUDE_MODEL as ClaudeModel) ?? "claude-sonnet-4-latest",
+  claudeModel: (process.env.CLAUDE_MODEL as ClaudeModel) ?? "claude-sonnet-4-5",
   jiraBaseUrl: process.env.JIRA_BASE_URL ?? "",
 };
 
 /**
  * Initialize the Redis client for config storage
  */
-export function initConfigStore(redisUrl: string): void {
+export async function initConfigStore(redisUrl: string): Promise<void> {
+  // Avoid importing ioredis synchronously
+  // It has runtime behaviour we don't want to trigger in the client
+  const { Redis } = await import("ioredis");
   redisClient = new Redis(redisUrl);
 }
 

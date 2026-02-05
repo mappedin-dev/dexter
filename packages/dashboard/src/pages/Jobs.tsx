@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, type JobData } from "../api/client";
+import type { JobData } from "@mapthew/shared/api-types";
+import { api } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { ErrorCard } from "../components/ErrorCard";

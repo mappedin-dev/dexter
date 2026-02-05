@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { type SecretsStatus } from "@mapthew/shared";
 import {
   JIRA_EMAIL,
   JIRA_API_TOKEN,
@@ -24,9 +25,9 @@ function maskSecret(secret: string | undefined): string {
 
 // GET /api/secrets
 router.get("/", (_req, res) => {
-  res.json({
+  const secrets: SecretsStatus = {
     jira: {
-      email: JIRA_EMAIL,
+      email: JIRA_EMAIL ?? "",
       tokenMasked: maskSecret(JIRA_API_TOKEN),
       webhookSecretMasked: maskSecret(JIRA_WEBHOOK_SECRET),
     },
@@ -34,7 +35,8 @@ router.get("/", (_req, res) => {
       tokenMasked: maskSecret(GITHUB_TOKEN),
       webhookSecretMasked: maskSecret(GITHUB_WEBHOOK_SECRET),
     },
-  });
+  };
+  res.json(secrets);
 });
 
 export default router;

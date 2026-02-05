@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, type JobContext, type GitHubRepoResult } from "../api/client";
+import type { AdminJobContext, GitHubRepoResult } from "@mapthew/shared/api-types";
+import { api } from "../api/client";
 import {
   SearchableCheckbox,
   type SearchResult,
@@ -144,7 +145,7 @@ export default function NewJob() {
     setError(null);
 
     // Build context object
-    const context: JobContext = {};
+    const context: AdminJobContext = {};
     if (jiraBoardEnabled && jiraBoard) {
       context.jiraBoardId = jiraBoard.id;
     }

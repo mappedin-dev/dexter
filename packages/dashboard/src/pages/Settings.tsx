@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useTranslation, Trans } from "react-i18next";
+import { CLAUDE_MODELS } from "@mapthew/shared/constants";
+import type { ClaudeModel } from "@mapthew/shared/types";
 import { api } from "../api/client";
 import { Dropdown } from "../components/Dropdown";
 import { LoadingSpinner } from "../components/LoadingSpinner";
@@ -48,7 +50,7 @@ export default function Settings() {
   const { botDisplayName } = useConfig();
   const queryClient = useQueryClient();
   const [botName, setBotName] = useState("");
-  const [claudeModel, setClaudeModel] = useState("");
+  const [claudeModel, setClaudeModel] = useState<ClaudeModel | "">(CLAUDE_MODELS[0]);
   const [jiraBaseUrl, setJiraBaseUrl] = useState("");
   const [touched, setTouched] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -72,7 +74,7 @@ export default function Settings() {
   }, [config]);
 
   const mutation = useMutation({
-    mutationFn: (updates: { botName: string; claudeModel: string; jiraBaseUrl: string }) =>
+    mutationFn: (updates: { botName: string; claudeModel: ClaudeModel; jiraBaseUrl: string }) =>
       api.updateConfig(updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["config"] });
@@ -94,7 +96,7 @@ export default function Settings() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
-    if (!validationError && !jiraBaseUrlError) {
+    if (!validationError && !jiraBaseUrlError && claudeModel) {
       mutation.mutate({ botName, claudeModel, jiraBaseUrl });
     }
   };
@@ -175,8 +177,8 @@ export default function Settings() {
             <Dropdown
               id="claudeModel"
               value={claudeModel}
-              options={config?.availableModels.map((model) => ({ value: model, label: model })) || []}
-              onChange={setClaudeModel}
+              options={CLAUDE_MODELS.map((model) => ({ value: model, label: model }))}
+              onChange={(value) => setClaudeModel(value as ClaudeModel)}
             />
           </div>
         </div>

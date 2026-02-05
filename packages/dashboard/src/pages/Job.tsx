@@ -77,13 +77,23 @@ export default function Job() {
 
   const queueTime = job.processedOn ? formatDuration(job.processedOn - job.timestamp) : null;
   const processTime = job.processedOn && job.finishedOn ? formatDuration(job.finishedOn - job.processedOn) : null;
-  const instruction = typeof job.data?.instruction === "string" ? job.data.instruction : null;
+  
+  // Parse job.data from JSON string
+  const jobData: Record<string, unknown> = (() => {
+    try {
+      return typeof job.data === "string" ? JSON.parse(job.data) : {};
+    } catch {
+      return {};
+    }
+  })();
+  
+  const instruction = typeof jobData.instruction === "string" ? jobData.instruction : null;
   
   // Extract JIRA issue key from job data
-  const jiraIssueKey = typeof job.data?.issueKey === "string" 
-    ? job.data.issueKey 
-    : typeof job.data?.jiraIssueKey === "string" 
-    ? job.data.jiraIssueKey 
+  const jiraIssueKey = typeof jobData.issueKey === "string" 
+    ? jobData.issueKey 
+    : typeof jobData.jiraIssueKey === "string" 
+    ? jobData.jiraIssueKey 
     : null;
   
   const jiraUrl = jiraIssueKey && config?.jiraBaseUrl 
@@ -91,28 +101,28 @@ export default function Job() {
     : null;
   
   // Extract GitHub info from job data
-  const githubOwner = typeof job.data?.owner === "string" 
-    ? job.data.owner 
-    : typeof job.data?.githubOwner === "string" 
-    ? job.data.githubOwner 
+  const githubOwner = typeof jobData.owner === "string" 
+    ? jobData.owner 
+    : typeof jobData.githubOwner === "string" 
+    ? jobData.githubOwner 
     : null;
   
-  const githubRepo = typeof job.data?.repo === "string" 
-    ? job.data.repo 
-    : typeof job.data?.githubRepo === "string" 
-    ? job.data.githubRepo 
+  const githubRepo = typeof jobData.repo === "string" 
+    ? jobData.repo 
+    : typeof jobData.githubRepo === "string" 
+    ? jobData.githubRepo 
     : null;
   
-  const githubPrNumber = typeof job.data?.prNumber === "number" 
-    ? job.data.prNumber 
-    : typeof job.data?.githubPrNumber === "number" 
-    ? job.data.githubPrNumber 
+  const githubPrNumber = typeof jobData.prNumber === "number" 
+    ? jobData.prNumber 
+    : typeof jobData.githubPrNumber === "number" 
+    ? jobData.githubPrNumber 
     : null;
   
-  const githubIssueNumber = typeof job.data?.issueNumber === "number" 
-    ? job.data.issueNumber 
-    : typeof job.data?.githubIssueNumber === "number" 
-    ? job.data.githubIssueNumber 
+  const githubIssueNumber = typeof jobData.issueNumber === "number" 
+    ? jobData.issueNumber 
+    : typeof jobData.githubIssueNumber === "number" 
+    ? jobData.githubIssueNumber 
     : null;
   
   const githubPrUrl = githubOwner && githubRepo && githubPrNumber
@@ -217,14 +227,14 @@ export default function Job() {
         <div>
           <h2 className="text-sm font-medium text-dark-200 mb-3">{t("task.taskData")}</h2>
           <pre className="bg-dark-950/50 p-4 rounded-lg overflow-auto text-sm font-mono text-dark-200 border border-dark-700/50">
-            {JSON.stringify(job.data, null, 2)}
+            {JSON.stringify(jobData, null, 2)}
           </pre>
         </div>
-        {job.returnvalue !== undefined && (
+        {job.returnvalue && (
           <div>
             <h2 className="text-sm font-medium text-dark-200 mb-3">{t("task.returnValue")}</h2>
             <pre className="bg-dark-950/50 p-4 rounded-lg overflow-auto text-sm font-mono text-dark-200 border border-dark-700/50">
-              {JSON.stringify(job.returnvalue, null, 2)}
+              {job.returnvalue}
             </pre>
           </div>
         )}

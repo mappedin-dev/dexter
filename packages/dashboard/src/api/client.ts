@@ -1,72 +1,14 @@
+import type {
+  QueueStats,
+  JobData,
+  SecretsStatus,
+  SearchResult,
+  GitHubRepoResult,
+  AdminJobContext,
+  AppConfig,
+} from "@mapthew/shared/types";
+
 const API_BASE = "/api";
-
-export interface QueueStats {
-  name: string;
-  counts: {
-    waiting: number;
-    active: number;
-    completed: number;
-    failed: number;
-    delayed: number;
-  };
-}
-
-export interface JobData {
-  id: string;
-  name: string;
-  data: Record<string, unknown>;
-  status: "waiting" | "active" | "completed" | "failed" | "delayed";
-  progress: number;
-  attemptsMade: number;
-  timestamp: number;
-  processedOn?: number;
-  finishedOn?: number;
-  failedReason?: string;
-  returnvalue?: unknown;
-}
-
-export interface Config {
-  botName: string;
-  botDisplayName: string;
-  claudeModel: string;
-  availableModels: string[];
-  jiraBaseUrl: string;
-}
-
-export interface SecretsStatus {
-  jira: {
-    email: string;
-    tokenMasked: string;
-    webhookSecretMasked: string;
-  };
-  github: {
-    tokenMasked: string;
-    webhookSecretMasked: string;
-  };
-}
-
-// Search result types
-export interface SearchResult {
-  id: string;
-  label: string;
-}
-
-export interface GitHubRepoResult {
-  owner: string;
-  repo: string;
-  label: string;
-}
-
-// Job context for creating admin jobs
-export interface JobContext {
-  jiraBoardId?: string;
-  jiraIssueKey?: string;
-  githubOwner?: string;
-  githubRepo?: string;
-  githubBranchId?: string;
-  githubPrNumber?: number;
-  githubIssueNumber?: number;
-}
 
 // Token getter function, set by ApiTokenProvider
 let getAccessToken: (() => Promise<string>) | null = null;
@@ -118,7 +60,7 @@ export const api = {
       method: "DELETE",
     }),
 
-  createJob: (instruction: string, context?: JobContext) =>
+  createJob: (instruction: string, context?: AdminJobContext) =>
     fetchJSON<{ success: boolean; jobId: string }>("/queue/jobs", {
       method: "POST",
       body: JSON.stringify({ instruction, ...context }),
@@ -164,10 +106,10 @@ export const api = {
     ),
 
   // Config endpoints
-  getConfig: () => fetchJSON<Config>("/config"),
+  getConfig: () => fetchJSON<AppConfig>("/config"),
 
-  updateConfig: (config: Partial<Config>) =>
-    fetchJSON<Config>("/config", {
+  updateConfig: (config: Partial<AppConfig>) =>
+    fetchJSON<AppConfig>("/config", {
       method: "PUT",
       body: JSON.stringify(config),
     }),

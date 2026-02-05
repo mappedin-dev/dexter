@@ -1,4 +1,22 @@
-import { getTriggerPattern } from "./config.js";
+import type { JobJson, JobState, JobProgress } from "bullmq";
+import { CLAUDE_MODELS } from "./constants.js";
+
+// Re-export BullMQ types for convenience
+export type { JobState, JobProgress };
+
+/**
+ * Available Claude model type
+ */
+export type ClaudeModel = (typeof CLAUDE_MODELS)[number];
+
+/**
+ * Application configuration stored in Redis
+ */
+export interface AppConfig {
+  botName: string;
+  claudeModel: ClaudeModel;
+  jiraBaseUrl: string;
+}
 
 /**
  * Base job data common to all sources
@@ -51,27 +69,6 @@ export interface AdminJob extends BaseJob {
 export type Job = JiraJob | GitHubJob | AdminJob;
 
 /**
- * Type guard for JiraJob
- */
-export function isJiraJob(job: Job): job is JiraJob {
-  return job.source === "jira";
-}
-
-/**
- * Type guard for GitHubJob
- */
-export function isGitHubJob(job: Job): job is GitHubJob {
-  return job.source === "github";
-}
-
-/**
- * Type guard for AdminJob
- */
-export function isAdminJob(job: Job): job is AdminJob {
-  return job.source === "admin";
-}
-
-/**
  * JIRA API credentials for posting comments
  */
 export interface JiraCredentials {
@@ -106,22 +103,6 @@ export interface WebhookPayload {
 }
 
 /**
- * Check if a webhook payload is a comment_created event
- */
-export function isCommentCreatedEvent(payload: WebhookPayload): boolean {
-  return payload.webhookEvent === "comment_created";
-}
-
-/**
- * Extract bot instruction from comment body
- * Returns null if no trigger found (e.g., @mapthew or configured bot name)
- */
-export function extractBotInstruction(commentBody: string): string | null {
-  const match = commentBody.match(getTriggerPattern());
-  return match ? match[1].trim() : null;
-}
-
-/**
  * GitHub webhook payload for issue_comment event on PRs
  */
 export interface GitHubWebhookPayload {
@@ -151,30 +132,74 @@ export interface GitHubWebhookPayload {
 }
 
 /**
- * Check if a GitHub webhook payload is a PR comment event
+ * GET /api/queue response
  */
-export function isGitHubPRCommentEvent(payload: GitHubWebhookPayload): boolean {
-  return (
-    payload.action === "created" && payload.issue?.pull_request !== undefined
-  );
+export interface QueueStats {
+  name: string;
+  counts: Partial<Record<JobState, number>>;
 }
 
 /**
- * Check if a GitHub webhook payload is an issue comment event
+ * GET /api/queue/jobs response item
+ * Derived from BullMQ's JobJson - adds status from getState()
  */
-export function isGitHubIssueCommentEvent(
-  payload: GitHubWebhookPayload
-): boolean {
-  return (
-    payload.action === "created" && payload.issue?.pull_request === undefined
-  );
+export type JobData = Pick<
+  JobJson,
+  | "id"
+  | "name"
+  | "data" // JSON string, client parses
+  | "progress"
+  | "attemptsMade"
+  | "timestamp"
+  | "processedOn"
+  | "finishedOn"
+  | "failedReason" // Empty string when no failure
+  | "returnvalue" // JSON string, client parses
+> & {
+  status: JobState; // Added from job.getState()
+};
+
+/**
+ * GET /api/secrets response
+ */
+export interface SecretsStatus {
+  jira: {
+    email: string;
+    tokenMasked: string;
+    webhookSecretMasked: string;
+  };
+  github: {
+    tokenMasked: string;
+    webhookSecretMasked: string;
+  };
 }
 
 /**
- * Extract JIRA issue key from PR branch name or title
- * Looks for patterns like DXTR-123, ABC-456, etc.
+ * Search result for Jira boards, issues, GitHub branches, PRs, issues
  */
-export function extractIssueKeyFromBranch(branchName: string): string | null {
-  const match = branchName.match(/([A-Z]+-\d+)/i);
-  return match ? match[1].toUpperCase() : null;
+export interface SearchResult {
+  id: string;
+  label: string;
+}
+
+/**
+ * GitHub repository search result
+ */
+export interface GitHubRepoResult {
+  owner: string;
+  repo: string;
+  label: string;
+}
+
+/**
+ * Job context for creating admin jobs via POST /api/queue/jobs
+ */
+export interface AdminJobContext {
+  jiraBoardId?: string;
+  jiraIssueKey?: string;
+  githubOwner?: string;
+  githubRepo?: string;
+  githubBranchId?: string;
+  githubPrNumber?: number;
+  githubIssueNumber?: number;
 }

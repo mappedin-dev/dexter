@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import type { SecretsStatus } from "../api/client";
+import type { SecretsStatus } from "@mapthew/shared/api-types";
 import { JiraLogo } from "./JiraLogo";
 import { GitHubLogo } from "./GitHubLogo";
 import { Tooltip } from "./Tooltip";

@@ -108,6 +108,14 @@ Set `BOT_NAME` to customize the trigger (e.g., `@mybot` instead of `@mapthew`), 
    - **JIRA**: Point to `/webhook/jira` for ticket comment triggers
    - **GitHub**: Point to `/webhook/github` for PR comment triggers (configure for `issue_comment` events)
 
+## Unit Testing
+
+Run unit tests:
+
+```bash
+pnpm test
+```
+
 ## Local Testing
 
 Use the `requests.http` file to trigger workflows without relying on the JIRA webhook:
@@ -154,7 +162,7 @@ The GitHub MCP test uses a remote hosted endpoint and requires no local installa
 Run integration tests to make sure the MCP servers are accessible:
 
 ```bash
-pnpm mcp test
+pnpm mcp mcp-test
 ```
 
 ## Architecture

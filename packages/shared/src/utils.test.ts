@@ -2,14 +2,19 @@ import { describe, it, expect } from "vitest";
 import {
   isJiraJob,
   isGitHubJob,
+  isAdminJob,
   isCommentCreatedEvent,
   extractBotInstruction,
   isGitHubPRCommentEvent,
+  isGitHubIssueCommentEvent,
   extractIssueKeyFromBranch,
-  type JiraJob,
-  type GitHubJob,
-  type WebhookPayload,
-  type GitHubWebhookPayload,
+} from "./utils.js";
+import type {
+  JiraJob,
+  GitHubJob,
+  AdminJob,
+  WebhookPayload,
+  GitHubWebhookPayload,
 } from "./types.js";
 
 describe("isJiraJob", () => {
@@ -59,6 +64,52 @@ describe("isGitHubJob", () => {
       triggeredBy: "user@example.com",
     };
     expect(isGitHubJob(job)).toBe(false);
+  });
+});
+
+describe("isAdminJob", () => {
+  it("returns true for AdminJob", () => {
+    const job: AdminJob = {
+      source: "admin",
+      instruction: "run maintenance",
+      triggeredBy: "admin",
+    };
+    expect(isAdminJob(job)).toBe(true);
+  });
+
+  it("returns true for AdminJob with optional context", () => {
+    const job: AdminJob = {
+      source: "admin",
+      instruction: "fix bug",
+      triggeredBy: "admin",
+      jiraIssueKey: "PROJ-123",
+      githubOwner: "org",
+      githubRepo: "repo",
+    };
+    expect(isAdminJob(job)).toBe(true);
+  });
+
+  it("returns false for JiraJob", () => {
+    const job: JiraJob = {
+      source: "jira",
+      issueKey: "DXTR-123",
+      projectKey: "DXTR",
+      instruction: "implement this",
+      triggeredBy: "user@example.com",
+    };
+    expect(isAdminJob(job)).toBe(false);
+  });
+
+  it("returns false for GitHubJob", () => {
+    const job: GitHubJob = {
+      source: "github",
+      owner: "org",
+      repo: "repo",
+      prNumber: 42,
+      instruction: "fix this",
+      triggeredBy: "user",
+    };
+    expect(isAdminJob(job)).toBe(false);
   });
 });
 
@@ -200,6 +251,71 @@ describe("isGitHubPRCommentEvent", () => {
       sender: { login: "testuser" },
     };
     expect(isGitHubPRCommentEvent(payload)).toBe(false);
+  });
+});
+
+describe("isGitHubIssueCommentEvent", () => {
+  it("returns true for issue comment created event", () => {
+    const payload: GitHubWebhookPayload = {
+      action: "created",
+      comment: {
+        id: 1,
+        body: "@mapthew fix this",
+        user: { login: "testuser" },
+      },
+      issue: {
+        number: 100,
+        // No pull_request field - this is an issue
+      },
+      repository: {
+        name: "repo",
+        owner: { login: "org" },
+      },
+      sender: { login: "testuser" },
+    };
+    expect(isGitHubIssueCommentEvent(payload)).toBe(true);
+  });
+
+  it("returns false for PR comment (has pull_request)", () => {
+    const payload: GitHubWebhookPayload = {
+      action: "created",
+      comment: {
+        id: 1,
+        body: "@mapthew fix this",
+        user: { login: "testuser" },
+      },
+      issue: {
+        number: 42,
+        pull_request: { url: "https://api.github.com/repos/org/repo/pulls/42" },
+      },
+      repository: {
+        name: "repo",
+        owner: { login: "org" },
+      },
+      sender: { login: "testuser" },
+    };
+    expect(isGitHubIssueCommentEvent(payload)).toBe(false);
+  });
+
+  it("returns false for edited issue comment", () => {
+    const payload: GitHubWebhookPayload = {
+      action: "edited",
+      comment: {
+        id: 1,
+        body: "@mapthew fix this",
+        user: { login: "testuser" },
+      },
+      issue: {
+        number: 100,
+        // No pull_request field
+      },
+      repository: {
+        name: "repo",
+        owner: { login: "org" },
+      },
+      sender: { login: "testuser" },
+    };
+    expect(isGitHubIssueCommentEvent(payload)).toBe(false);
   });
 });
 

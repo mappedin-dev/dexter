@@ -2,7 +2,6 @@ import { Router } from "express";
 import {
   getConfig,
   saveConfig,
-  getBotDisplayName,
   CLAUDE_MODELS,
   isValidJiraUrl,
   type AppConfig,
@@ -10,24 +9,18 @@ import {
 
 const router: Router = Router();
 
-// GET /api/config
+// GET /api/config - Returns AppConfig
 router.get("/", async (_req, res) => {
   try {
-    const config = await getConfig();
-    res.json({
-      botName: config.botName,
-      botDisplayName: getBotDisplayName(),
-      claudeModel: config.claudeModel,
-      availableModels: CLAUDE_MODELS,
-      jiraBaseUrl: config.jiraBaseUrl,
-    });
+    const config: AppConfig = await getConfig();
+    res.json(config);
   } catch (error) {
     console.error("Error getting config:", error);
     res.status(500).json({ error: "Failed to get config" });
   }
 });
 
-// PUT /api/config
+// PUT /api/config - Updates and returns AppConfig
 router.put("/", async (req, res) => {
   try {
     const { botName, claudeModel, jiraBaseUrl } = req.body as Partial<AppConfig>;
@@ -64,14 +57,8 @@ router.put("/", async (req, res) => {
     await saveConfig(config);
     console.log(`Config updated: botName=${config.botName}, claudeModel=${config.claudeModel}, jiraBaseUrl=${config.jiraBaseUrl}`);
 
-    const updatedConfig = await getConfig();
-    res.json({
-      botName: updatedConfig.botName,
-      botDisplayName: getBotDisplayName(),
-      claudeModel: updatedConfig.claudeModel,
-      availableModels: CLAUDE_MODELS,
-      jiraBaseUrl: updatedConfig.jiraBaseUrl,
-    });
+    const updatedConfig: AppConfig = await getConfig();
+    res.json(updatedConfig);
   } catch (error) {
     console.error("Error updating config:", error);
     res.status(500).json({ error: (error as Error).message });
