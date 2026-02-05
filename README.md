@@ -168,3 +168,11 @@ pnpm mcp mcp-test
 ## Architecture
 
 See [docs/architecture.md](./docs/architecture.md) for detailed system design and workflow diagrams.
+
+## Support
+
+For questions or issues, please contact the Mappedin development team.
+
+## License
+
+This project is proprietary software owned by Mappedin Inc.
