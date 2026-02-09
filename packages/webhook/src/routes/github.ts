@@ -3,6 +3,7 @@ import type {
   GitHubJob,
   GitHubWebhookPayload,
   GitHubReviewCommentPayload,
+  GitHubPRPayload,
   SessionCleanupJob,
 } from "@mapthew/shared/types";
 import {
@@ -17,26 +18,6 @@ import { queue, GITHUB_TOKEN, VERBOSE_LOGS } from "../config.js";
 import { githubWebhookAuth } from "../middleware/index.js";
 
 const router: Router = Router();
-
-/**
- * GitHub PR merge webhook payload
- */
-interface GitHubPRPayload {
-  action: string;
-  pull_request: {
-    number: number;
-    merged: boolean;
-    head: {
-      ref: string; // branch name
-    };
-  };
-  repository: {
-    name: string;
-    owner: {
-      login: string;
-    };
-  };
-}
 
 /**
  * Handle PR merge events - cleanup session
