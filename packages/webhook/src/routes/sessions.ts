@@ -4,9 +4,9 @@ import {
   getSessionCount,
   getMaxSessions,
   getWorkspacesDir,
-  type SessionCleanupJob,
   type SessionInfo,
-} from "@mapthew/shared";
+} from "@mapthew/shared/workspace";
+import type { SessionCleanupJob } from "@mapthew/shared/types";
 import { queue } from "../config.js";
 
 const router: Router = Router();

@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, type JobData } from "../api/client";
+import type { JobData } from "@mapthew/shared/api-types";
+import { parseJobData } from "@mapthew/shared/utils";
+import { api } from "../api/client";
 import { StatusBadge } from "../components/StatusBadge";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { ErrorCard } from "../components/ErrorCard";
@@ -32,7 +34,8 @@ function JobRow({ job }: { job: JobData }) {
 
   const createdAt = new Date(job.timestamp).toLocaleString();
   const finishedAt = job.finishedOn ? new Date(job.finishedOn).toLocaleString() : "-";
-  const source = (job.data as { source?: string }).source ?? "unknown";
+  const parsedData = parseJobData(job.data);
+  const source = (parsedData.source as string) ?? "unknown";
 
   const handleRowClick = () => {
     navigate(`/tasks/${job.id}`);

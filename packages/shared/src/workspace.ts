@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { getBotName } from "./config.js";
+import { getBotName } from "./utils.js";
 
 /**
  * Session information for monitoring

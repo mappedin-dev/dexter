@@ -1,15 +1,14 @@
+import { createWorker, type BullJob } from "@mapthew/shared/queue";
+import type { Job, QueueJob } from "@mapthew/shared/types";
 import {
-  createWorker,
-  type BullJob,
   isAdminJob,
   isGitHubJob,
   isJiraJob,
   isSessionCleanupJob,
-  postGitHubComment,
-  postJiraComment,
-  type Job,
-  type QueueJob,
   getBotName,
+} from "@mapthew/shared/utils";
+import { postGitHubComment, postJiraComment } from "@mapthew/shared/api";
+import {
   getOrCreateWorkspace,
   hasExistingSession,
   canCreateSession,
@@ -17,7 +16,7 @@ import {
   workspaceExists,
   cleanupWorkspace,
   getMaxSessions,
-} from "@mapthew/shared";
+} from "@mapthew/shared/workspace";
 import { invokeClaudeCode } from "./claude.js";
 import { getReadableId, getIssueKey } from "./utils.js";
 

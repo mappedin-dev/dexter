@@ -1,8 +1,9 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import express, { type Request, type Response } from "express";
-import { PORT, REDIS_URL } from "./config.js";
-import { getBotName, initConfigStore, getConfig } from "@mapthew/shared";
+import { PORT, REDIS_URL, VERBOSE_LOGS } from "./config.js";
+import { getBotName } from "@mapthew/shared/utils";
+import { initConfigStore, getConfig } from "@mapthew/shared/config";
 import type { RequestWithRawBody } from "./middleware/index.js";
 import { jwtCheck, requireAdminPermission } from "./middleware/auth.js";
 import jiraRoutes from "./routes/jira.js";
@@ -55,4 +56,5 @@ app.get("/health", (_req, res) => {
 app.listen(PORT, () => {
   console.log(`Webhook server listening on port ${PORT}`);
   console.log(`  Listening as: @${getBotName()}`);
+  if (VERBOSE_LOGS) console.log(`  Verbose logging enabled`);
 });
