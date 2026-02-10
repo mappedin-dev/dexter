@@ -17,6 +17,9 @@ import {
   isGitHubIssueCommentEvent,
   extractIssueKeyFromBranch,
   parseJobData,
+  isIssueUpdatedEvent,
+  wasLabelAdded,
+  getLabelTrigger,
 } from "./utils.js";
 import type {
   JiraJob,
@@ -24,6 +27,7 @@ import type {
   AdminJob,
   WebhookPayload,
   GitHubWebhookPayload,
+  JiraIssueUpdatedPayload,
 } from "./types.js";
 
 describe("isValidBotName", () => {
@@ -540,5 +544,152 @@ describe("parseJobData", () => {
 
   it("returns empty object for empty string", () => {
     expect(parseJobData("")).toEqual({});
+  });
+});
+
+describe("isIssueUpdatedEvent", () => {
+  it("returns true for jira:issue_updated event", () => {
+    const payload: JiraIssueUpdatedPayload = {
+      webhookEvent: "jira:issue_updated",
+      issue: { key: "PROJ-123" },
+    };
+    expect(isIssueUpdatedEvent(payload)).toBe(true);
+  });
+
+  it("returns false for other events", () => {
+    const payload: JiraIssueUpdatedPayload = {
+      webhookEvent: "comment_created",
+      issue: { key: "PROJ-123" },
+    };
+    expect(isIssueUpdatedEvent(payload)).toBe(false);
+  });
+});
+
+describe("wasLabelAdded", () => {
+  it("detects when a label is added", () => {
+    const payload: JiraIssueUpdatedPayload = {
+      webhookEvent: "jira:issue_updated",
+      issue: { key: "PROJ-123" },
+      changelog: {
+        items: [
+          {
+            field: "labels",
+            fromString: "bug",
+            toString: "bug claude-ready",
+          },
+        ],
+      },
+    };
+    expect(wasLabelAdded(payload, "claude-ready")).toBe(true);
+  });
+
+  it("returns false when label was removed", () => {
+    const payload: JiraIssueUpdatedPayload = {
+      webhookEvent: "jira:issue_updated",
+      issue: { key: "PROJ-123" },
+      changelog: {
+        items: [
+          {
+            field: "labels",
+            fromString: "bug claude-ready",
+            toString: "bug",
+          },
+        ],
+      },
+    };
+    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+  });
+
+  it("returns false when label was already present", () => {
+    const payload: JiraIssueUpdatedPayload = {
+      webhookEvent: "jira:issue_updated",
+      issue: { key: "PROJ-123" },
+      changelog: {
+        items: [
+          {
+            field: "labels",
+            fromString: "bug claude-ready",
+            toString: "bug claude-ready feature",
+          },
+        ],
+      },
+    };
+    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+  });
+
+  it("detects label added from empty labels", () => {
+    const payload: JiraIssueUpdatedPayload = {
+      webhookEvent: "jira:issue_updated",
+      issue: { key: "PROJ-123" },
+      changelog: {
+        items: [
+          {
+            field: "labels",
+            fromString: null,
+            toString: "claude-ready",
+          },
+        ],
+      },
+    };
+    expect(wasLabelAdded(payload, "claude-ready")).toBe(true);
+  });
+
+  it("returns false when changelog has no label changes", () => {
+    const payload: JiraIssueUpdatedPayload = {
+      webhookEvent: "jira:issue_updated",
+      issue: { key: "PROJ-123" },
+      changelog: {
+        items: [
+          {
+            field: "status",
+            fromString: "To Do",
+            toString: "In Progress",
+          },
+        ],
+      },
+    };
+    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+  });
+
+  it("returns false when no changelog present", () => {
+    const payload: JiraIssueUpdatedPayload = {
+      webhookEvent: "jira:issue_updated",
+      issue: { key: "PROJ-123" },
+    };
+    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+  });
+
+  it("handles different label being looked for", () => {
+    const payload: JiraIssueUpdatedPayload = {
+      webhookEvent: "jira:issue_updated",
+      issue: { key: "PROJ-123" },
+      changelog: {
+        items: [
+          {
+            field: "labels",
+            fromString: null,
+            toString: "bug",
+          },
+        ],
+      },
+    };
+    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+    expect(wasLabelAdded(payload, "bug")).toBe(true);
+  });
+});
+
+describe("getLabelTrigger", () => {
+  it("returns configured label trigger", () => {
+    const original = process.env.JIRA_LABEL_TRIGGER;
+    process.env.JIRA_LABEL_TRIGGER = "claude-ready";
+    expect(getLabelTrigger()).toBe("claude-ready");
+    process.env.JIRA_LABEL_TRIGGER = original;
+  });
+
+  it("returns empty string when not configured", () => {
+    const original = process.env.JIRA_LABEL_TRIGGER;
+    delete process.env.JIRA_LABEL_TRIGGER;
+    expect(getLabelTrigger()).toBe("");
+    process.env.JIRA_LABEL_TRIGGER = original;
   });
 });

@@ -3,6 +3,7 @@ import queueRoutes from "./queue.js";
 import configRoutes from "./config.js";
 import searchRoutes from "./search.js";
 import secretsRoutes from "./secrets.js";
+import bulkRoutes from "./bulk.js";
 
 const router: Router = Router();
 
@@ -11,5 +12,6 @@ router.use("/queue", queueRoutes);
 router.use("/config", configRoutes);
 router.use("/search", searchRoutes);
 router.use("/secrets", secretsRoutes);
+router.use("/bulk", bulkRoutes);
 
 export default router;

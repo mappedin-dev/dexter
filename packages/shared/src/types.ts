@@ -170,6 +170,30 @@ export interface GitHubReviewCommentPayload {
 }
 
 /**
+ * JIRA webhook payload for jira:issue_updated event (label changes)
+ * Used to detect when a trigger label is added to an issue
+ */
+export interface JiraIssueUpdatedPayload {
+  webhookEvent: string;
+  issue: {
+    key: string;
+    fields?: {
+      summary?: string;
+    };
+  };
+  changelog?: {
+    items: Array<{
+      field: string;
+      fromString: string | null;
+      toString: string | null;
+    }>;
+  };
+  user?: {
+    displayName: string;
+  };
+}
+
+/**
  * GET /api/queue response
  */
 export interface QueueStats {

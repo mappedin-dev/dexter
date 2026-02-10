@@ -90,7 +90,7 @@ describe("JIRA webhook routes", () => {
       expect(postJiraComment).toHaveBeenCalled();
     });
 
-    it("ignores non-comment_created events", async () => {
+    it("ignores non-comment_created events when no label trigger configured", async () => {
       const payload = {
         webhookEvent: "comment_updated",
         comment: {
@@ -108,7 +108,7 @@ describe("JIRA webhook routes", () => {
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({
         status: "ignored",
-        reason: "not a comment_created event",
+        reason: "unhandled event",
       });
       expect(mockQueue.add).not.toHaveBeenCalled();
     });
@@ -156,6 +156,156 @@ describe("JIRA webhook routes", () => {
         }),
         expect.any(Object)
       );
+    });
+  });
+
+  describe("POST /webhook/jira - label trigger", () => {
+    it("queues job when trigger label is added", async () => {
+      // Temporarily set the env var for this test
+      const original = process.env.JIRA_LABEL_TRIGGER;
+      process.env.JIRA_LABEL_TRIGGER = "claude-ready";
+
+      const payload = {
+        webhookEvent: "jira:issue_updated",
+        issue: {
+          key: "PROJ-789",
+          fields: { summary: "Test ticket" },
+        },
+        changelog: {
+          items: [
+            {
+              field: "labels",
+              fromString: "bug",
+              toString: "bug claude-ready",
+            },
+          ],
+        },
+        user: { displayName: "Jane Doe" },
+      };
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/webhook/jira")
+        .send(payload);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        status: "queued",
+        issueKey: "PROJ-789",
+      });
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        "process-ticket",
+        expect.objectContaining({
+          source: "jira",
+          issueKey: "PROJ-789",
+          projectKey: "PROJ",
+          instruction: "implement the change described in this ticket",
+          triggeredBy: "Jane Doe",
+        }),
+        expect.any(Object)
+      );
+      expect(postJiraComment).toHaveBeenCalled();
+
+      process.env.JIRA_LABEL_TRIGGER = original;
+    });
+
+    it("ignores issue_updated when trigger label is not added", async () => {
+      const original = process.env.JIRA_LABEL_TRIGGER;
+      process.env.JIRA_LABEL_TRIGGER = "claude-ready";
+
+      const payload = {
+        webhookEvent: "jira:issue_updated",
+        issue: { key: "PROJ-789" },
+        changelog: {
+          items: [
+            {
+              field: "labels",
+              fromString: "bug claude-ready",
+              toString: "bug",
+            },
+          ],
+        },
+        user: { displayName: "Jane Doe" },
+      };
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/webhook/jira")
+        .send(payload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("ignored");
+      expect(res.body.reason).toContain("was not added");
+      expect(mockQueue.add).not.toHaveBeenCalled();
+
+      process.env.JIRA_LABEL_TRIGGER = original;
+    });
+
+    it("ignores issue_updated when no label trigger is configured", async () => {
+      const original = process.env.JIRA_LABEL_TRIGGER;
+      delete process.env.JIRA_LABEL_TRIGGER;
+
+      const payload = {
+        webhookEvent: "jira:issue_updated",
+        issue: { key: "PROJ-789" },
+        changelog: {
+          items: [
+            {
+              field: "labels",
+              fromString: "",
+              toString: "claude-ready",
+            },
+          ],
+        },
+        user: { displayName: "Jane Doe" },
+      };
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/webhook/jira")
+        .send(payload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("ignored");
+      expect(mockQueue.add).not.toHaveBeenCalled();
+
+      process.env.JIRA_LABEL_TRIGGER = original;
+    });
+
+    it("uses 'label-trigger' as triggeredBy when user is not provided", async () => {
+      const original = process.env.JIRA_LABEL_TRIGGER;
+      process.env.JIRA_LABEL_TRIGGER = "claude-ready";
+
+      const payload = {
+        webhookEvent: "jira:issue_updated",
+        issue: { key: "PROJ-100" },
+        changelog: {
+          items: [
+            {
+              field: "labels",
+              fromString: null,
+              toString: "claude-ready",
+            },
+          ],
+        },
+      };
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/webhook/jira")
+        .send(payload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("queued");
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        "process-ticket",
+        expect.objectContaining({
+          triggeredBy: "label-trigger",
+        }),
+        expect.any(Object)
+      );
+
+      process.env.JIRA_LABEL_TRIGGER = original;
     });
   });
 });
