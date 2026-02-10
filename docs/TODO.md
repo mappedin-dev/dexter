@@ -17,3 +17,5 @@
 - [ ] **More Logging** - Support viewing the worker logs from the dashboard
 
 - [ ] **Prompt Management** - Split up prompts by task
+
+- [ ] **Dedicated Cleanup Queue** — Use a separate BullMQ queue and worker for `session-cleanup` jobs so they aren't blocked behind long-running Claude sessions. Would allow cleanup to run immediately regardless of main worker state, improving slot recycling under high capacity.
