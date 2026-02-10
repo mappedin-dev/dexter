@@ -1,5 +1,5 @@
 import { createQueue, Queue } from "@mapthew/shared/queue";
-import type { QueueJob } from "@mapthew/shared/types";
+import type { Job } from "@mapthew/shared/types";
 
 export const PORT = process.env.PORT || 3000;
 export const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
@@ -35,4 +35,4 @@ export const jiraCredentials = {
   apiToken: JIRA_API_TOKEN,
 };
 
-export const queue: Queue<QueueJob> = createQueue(REDIS_URL);
+export const queue: Queue<Job> = createQueue(REDIS_URL);

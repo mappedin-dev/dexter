@@ -1,5 +1,5 @@
 import { createWorker, type BullJob } from "@mapthew/shared/queue";
-import type { Job, QueueJob } from "@mapthew/shared/types";
+import type { Job } from "@mapthew/shared/types";
 import {
   isAdminJob,
   isGitHubJob,
@@ -111,7 +111,7 @@ async function processRegularJob(job: Job): Promise<void> {
 /**
  * Process a queue job
  */
-async function processJob(bullJob: BullJob<QueueJob>): Promise<void> {
+async function processJob(bullJob: BullJob<Job>): Promise<void> {
   await processRegularJob(bullJob.data);
 }
 
@@ -121,7 +121,7 @@ const worker = createWorker(REDIS_URL, processJob);
 // Handle failed jobs - post error to appropriate source
 worker.on("failed", async (job, err) => {
   if (job) {
-    const data = job.data as QueueJob;
+    const data = job.data as Job;
     console.error(`Job failed for ${getReadableId(data)}:`, err.message);
     await postComment(data, `🤓 Oops, I hit an error: ${err.message}`);
   }
@@ -129,7 +129,7 @@ worker.on("failed", async (job, err) => {
 
 // Handle completed jobs
 worker.on("completed", (job) => {
-  const data = job.data as QueueJob;
+  const data = job.data as Job;
   console.log(`Job completed: ${getReadableId(data)}`);
 });
 

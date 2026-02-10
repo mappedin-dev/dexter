@@ -96,11 +96,6 @@ export interface AdminJob extends BaseJob {
 export type Job = JiraJob | GitHubJob | AdminJob;
 
 /**
- * Union of all queue job types
- */
-export type QueueJob = Job;
-
-/**
  * JIRA API credentials for posting comments
  */
 export interface JiraCredentials {

@@ -1,5 +1,5 @@
 import { Queue, Worker, type Job as BullJob, type Processor } from "bullmq";
-import type { QueueJob } from "./types.js";
+import type { Job } from "./types.js";
 import { getQueueName } from "./utils.js";
 
 /**
@@ -7,9 +7,9 @@ import { getQueueName } from "./utils.js";
  *
  * The queue accepts all job types (regular jobs and system jobs like cleanup)
  */
-export function createQueue(redisUrl: string): Queue<QueueJob> {
+export function createQueue(redisUrl: string): Queue<Job> {
   const connection = parseRedisUrl(redisUrl);
-  return new Queue<QueueJob>(getQueueName(), {
+  return new Queue<Job>(getQueueName(), {
     connection,
     defaultJobOptions: {
       removeOnComplete: {
@@ -28,10 +28,10 @@ export function createQueue(redisUrl: string): Queue<QueueJob> {
  */
 export function createWorker(
   redisUrl: string,
-  processor: Processor<QueueJob>,
-): Worker<QueueJob> {
+  processor: Processor<Job>,
+): Worker<Job> {
   const connection = parseRedisUrl(redisUrl);
-  return new Worker<QueueJob>(getQueueName(), processor, {
+  return new Worker<Job>(getQueueName(), processor, {
     connection,
     concurrency: 1, // Process one job at a time
   });
