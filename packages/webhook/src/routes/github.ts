@@ -57,15 +57,6 @@ router.post("/", githubWebhookAuth, async (req, res) => {
       return res.status(200).json({ status: "pong" });
     }
 
-    // PR merge/close events are ignored — sessions are pruned by the worker
-    // based on inactivity threshold rather than on PR lifecycle events
-    if (event === "pull_request") {
-      return res.status(200).json({
-        status: "ignored",
-        reason: "pull_request events not processed",
-      });
-    }
-
     // Handle PR review comments (file-level comments on diffs)
     if (event === "pull_request_review_comment") {
       const payload = req.body as GitHubReviewCommentPayload;

@@ -55,26 +55,6 @@ export interface GitHubJob extends BaseJob {
 }
 
 /**
- * GitHub PR webhook payload (used for merge/close events)
- */
-export interface GitHubPRPayload {
-  action: string;
-  pull_request: {
-    number: number;
-    merged: boolean;
-    head: {
-      ref: string; // branch name
-    };
-  };
-  repository: {
-    name: string;
-    owner: {
-      login: string;
-    };
-  };
-}
-
-/**
  * Job triggered from admin dashboard
  */
 export interface AdminJob extends BaseJob {
