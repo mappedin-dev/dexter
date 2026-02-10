@@ -1,12 +1,26 @@
 import { createWorker, type BullJob } from "@mapthew/shared/queue";
 import type { Job } from "@mapthew/shared/types";
-import { isAdminJob, isGitHubJob, isJiraJob, getBotName } from "@mapthew/shared/utils";
+import {
+  isAdminJob,
+  isGitHubJob,
+  isJiraJob,
+  getBotName,
+} from "@mapthew/shared/utils";
+import { initConfigStore } from "@mapthew/shared/config";
 import { postGitHubComment, postJiraComment } from "@mapthew/shared/api";
+import {
+  getOrCreateWorkspace,
+  hasExistingSession,
+  workspaceExists,
+  getMaxSessions,
+  getSessionCount,
+  evictOldestSession,
+  pruneInactiveSessions,
+  getPruneThresholdDays,
+  getPruneIntervalDays,
+} from "@mapthew/shared/workspace";
 import { invokeClaudeCode } from "./claude.js";
-import { getReadableId } from "./utils.js";
-import fs from "fs/promises";
-import path from "path";
-import os from "os";
+import { getReadableId, getIssueKey } from "./utils.js";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const JIRA_BASE_URL = process.env.JIRA_BASE_URL || "";
@@ -33,7 +47,7 @@ async function postComment(job: Job, comment: string): Promise<void> {
         job.owner,
         job.repo,
         number,
-        comment
+        comment,
       );
     }
   } else if (isJiraJob(job)) {
@@ -45,53 +59,60 @@ async function postComment(job: Job, comment: string): Promise<void> {
 }
 
 /**
- * Create a temporary workspace directory
+ * Process a regular job using persistent workspaces for session reuse
  */
-async function createTempWorkspace(jobId: string): Promise<string> {
-  // Sanitize jobId for filesystem (replace / with -)
-  const sanitized = jobId.replace(/\//g, "-");
-  const tempDir = path.join(
-    os.tmpdir(),
-    `${getBotName()}-${sanitized}-${Date.now()}`
-  );
-  await fs.mkdir(tempDir, { recursive: true });
-  return tempDir;
-}
+async function processRegularJob(job: Job): Promise<void> {
+  const jobId = getReadableId(job);
+  const issueKey = getIssueKey(job);
 
-/**
- * Clean up a workspace directory
- */
-async function cleanupWorkspace(workDir: string): Promise<void> {
-  try {
-    await fs.rm(workDir, { recursive: true, force: true });
-  } catch (error) {
-    console.warn(`Failed to cleanup workspace ${workDir}:`, error);
+  console.log(`Processing job for ${jobId}: ${job.instruction}`);
+  console.log(`[Session] Issue key: ${issueKey}`);
+
+  // Check if this job can reuse an existing session
+  const hasExisting = await workspaceExists(issueKey);
+
+  // Soft cap: if no existing workspace and at capacity, evict the oldest
+  // session (LRU) to make room instead of blocking
+  if (!hasExisting) {
+    const count = await getSessionCount();
+    const max = await getMaxSessions();
+    if (count >= max) {
+      console.log(
+        `[Session] At soft cap (${count}/${max}), evicting oldest session`,
+      );
+      await evictOldestSession();
+    }
   }
+
+  // Get or create the persistent workspace
+  const workDir = await getOrCreateWorkspace(issueKey);
+  console.log(`[Session] Workspace: ${workDir}`);
+
+  // Check if there's an existing Claude session to resume
+  const hasSession = await hasExistingSession(workDir);
+  if (hasSession) {
+    console.log(`[Session] Found existing session, will resume`);
+  } else {
+    console.log(`[Session] No existing session, starting fresh`);
+  }
+
+  // Invoke Claude with session context
+  const result = await invokeClaudeCode(job, workDir, { hasSession });
+
+  if (!result.success) {
+    throw new Error(result.error || "Claude Code CLI failed");
+  }
+
+  console.log(`Job completed for ${jobId}`);
+  // Note: We intentionally do NOT clean up the workspace here
+  // Workspaces are pruned periodically based on inactivity threshold
 }
 
 /**
- * Process a job
+ * Process a queue job
  */
 async function processJob(bullJob: BullJob<Job>): Promise<void> {
-  const job = bullJob.data;
-  const jobId = getReadableId(job);
-  console.log(`Processing job for ${jobId}: ${job.instruction}`);
-
-  const workDir = await createTempWorkspace(jobId);
-  console.log(`Created workspace: ${workDir}`);
-
-  try {
-    const result = await invokeClaudeCode(job, workDir);
-
-    if (!result.success) {
-      throw new Error(result.error || "Claude Code CLI failed");
-    }
-
-    console.log(`Job completed for ${jobId}`);
-  } finally {
-    await cleanupWorkspace(workDir);
-    console.log(`Cleaned up workspace: ${workDir}`);
-  }
+  await processRegularJob(bullJob.data);
 }
 
 // Create worker
@@ -100,27 +121,63 @@ const worker = createWorker(REDIS_URL, processJob);
 // Handle failed jobs - post error to appropriate source
 worker.on("failed", async (job, err) => {
   if (job) {
-    console.error(`Job failed for ${getReadableId(job.data)}:`, err.message);
-    await postComment(job.data, `🤓 Oops, I hit an error: ${err.message}`);
+    const data = job.data as Job;
+    console.error(`Job failed for ${getReadableId(data)}:`, err.message);
+    await postComment(data, `🤓 Oops, I hit an error: ${err.message}`);
   }
 });
 
 // Handle completed jobs
 worker.on("completed", (job) => {
-  console.log(`Job completed: ${getReadableId(job.data)}`);
+  const data = job.data as Job;
+  console.log(`Job completed: ${getReadableId(data)}`);
 });
 
-console.log("Worker started, waiting for jobs...");
+// --- Periodic session pruning ---
+
+async function runPrune(): Promise<void> {
+  const thresholdDays = await getPruneThresholdDays();
+  console.log(
+    `[Session] Running scheduled prune (threshold: ${thresholdDays} days)`,
+  );
+  try {
+    await pruneInactiveSessions(thresholdDays);
+  } catch (error) {
+    console.error("[Session] Prune failed:", error);
+  }
+}
+
+// Initialize config store so the worker can read settings from Redis,
+// then start pruning on schedule
+let pruneInterval: ReturnType<typeof setInterval>;
+
+async function startPruning(): Promise<void> {
+  await initConfigStore(REDIS_URL);
+  const intervalDays = await getPruneIntervalDays();
+  const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
+
+  // Run an initial prune, then on schedule
+  void runPrune();
+  pruneInterval = setInterval(() => void runPrune(), intervalMs);
+
+  console.log(
+    `Worker started as @${getBotName()}, waiting for jobs... (prune every ${intervalDays}d)`,
+  );
+}
+
+void startPruning();
 
 // Graceful shutdown
 process.on("SIGTERM", async () => {
   console.log("Shutting down worker...");
+  clearInterval(pruneInterval);
   await worker.close();
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
   console.log("Shutting down worker...");
+  clearInterval(pruneInterval);
   await worker.close();
   process.exit(0);
 });

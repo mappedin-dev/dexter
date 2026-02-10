@@ -6,11 +6,20 @@ let redisClient: Redis | null = null;
 
 const CONFIG_KEY = "mapthew:config";
 
-const DEFAULT_CONFIG: AppConfig = {
-  botName: process.env.BOT_NAME ?? "mapthew",
-  claudeModel: (process.env.CLAUDE_MODEL as ClaudeModel) ?? "claude-sonnet-4-5",
-  jiraBaseUrl: process.env.JIRA_BASE_URL ?? "",
-};
+/**
+ * Build default config from environment variables.
+ * Called lazily so env vars set after module load are respected (e.g. in tests).
+ */
+function getDefaultConfig(): AppConfig {
+  return {
+    botName: process.env.BOT_NAME ?? "mapthew",
+    claudeModel: (process.env.CLAUDE_MODEL as ClaudeModel) ?? "claude-sonnet-4-5",
+    jiraBaseUrl: process.env.JIRA_BASE_URL ?? "",
+    maxSessions: parseInt(process.env.MAX_SESSIONS || "5", 10),
+    pruneThresholdDays: parseInt(process.env.PRUNE_THRESHOLD_DAYS || "7", 10),
+    pruneIntervalDays: parseInt(process.env.PRUNE_INTERVAL_DAYS || "7", 10),
+  };
+}
 
 /**
  * Initialize the Redis client for config storage
@@ -26,8 +35,10 @@ export async function initConfigStore(redisUrl: string): Promise<void> {
  * Get the current config from Redis (or defaults)
  */
 export async function getConfig(): Promise<AppConfig> {
+  const defaults = getDefaultConfig();
+
   if (!redisClient) {
-    return { ...DEFAULT_CONFIG, botName: getBotName() };
+    return { ...defaults, botName: getBotName() };
   }
 
   try {
@@ -38,9 +49,9 @@ export async function getConfig(): Promise<AppConfig> {
       if (config.botName && isValidBotName(config.botName)) {
         setBotName(config.botName);
       }
-      // Ensure jiraBaseUrl has a fallback
+      // Merge with defaults so new fields get fallback values
       return {
-        ...DEFAULT_CONFIG,
+        ...defaults,
         ...config,
       };
     }
@@ -48,7 +59,7 @@ export async function getConfig(): Promise<AppConfig> {
     console.error("Error loading config from Redis:", error);
   }
 
-  return { ...DEFAULT_CONFIG, botName: getBotName() };
+  return { ...defaults, botName: getBotName() };
 }
 
 /**

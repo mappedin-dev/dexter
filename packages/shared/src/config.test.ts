@@ -26,12 +26,18 @@ describe("config persistence with Redis", () => {
       botName: "persistbot",
       claudeModel: "claude-sonnet-4-5",
       jiraBaseUrl: "https://test.atlassian.net",
+      maxSessions: 10,
+      pruneThresholdDays: 14,
+      pruneIntervalDays: 1,
     });
 
     const config = await getConfig();
     expect(config.botName).toBe("persistbot");
     expect(config.claudeModel).toBe("claude-sonnet-4-5");
     expect(config.jiraBaseUrl).toBe("https://test.atlassian.net");
+    expect(config.maxSessions).toBe(10);
+    expect(config.pruneThresholdDays).toBe(14);
+    expect(config.pruneIntervalDays).toBe(1);
   });
 
   it("throws on invalid bot name during save", async () => {
@@ -40,6 +46,9 @@ describe("config persistence with Redis", () => {
         botName: "Invalid-Name",
         claudeModel: "claude-sonnet-4-5",
         jiraBaseUrl: "",
+        maxSessions: 5,
+        pruneThresholdDays: 7,
+        pruneIntervalDays: 7,
       })
     ).rejects.toThrow();
   });
@@ -50,6 +59,9 @@ describe("config persistence with Redis", () => {
         botName: "validbot",
         claudeModel: "claude-sonnet-4-5",
         jiraBaseUrl: "http://not-https.com",
+        maxSessions: 5,
+        pruneThresholdDays: 7,
+        pruneIntervalDays: 7,
       })
     ).rejects.toThrow();
   });
@@ -74,6 +86,9 @@ describe("getClaudeModel", () => {
       botName: "mapthew",
       claudeModel: "claude-haiku-4-5",
       jiraBaseUrl: "",
+      maxSessions: 5,
+      pruneThresholdDays: 7,
+      pruneIntervalDays: 7,
     });
 
     const model = await getClaudeModel();
