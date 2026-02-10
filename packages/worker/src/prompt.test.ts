@@ -135,6 +135,70 @@ describe("buildPrompt", () => {
     });
   });
 
+  describe("JIRA post-processing", () => {
+    it("includes transition instruction for JIRA jobs by default", () => {
+      const job: JiraJob = {
+        source: "jira",
+        issueKey: "POST-1",
+        projectKey: "POST",
+        instruction: "do work",
+        triggeredBy: "user",
+      };
+
+      const prompt = buildPrompt(job);
+
+      // Default (no env vars): should always include the transition step
+      expect(prompt).toContain("Transition to an appropriate status");
+    });
+
+    it("does not include post-processing for GitHub jobs", () => {
+      const job: GitHubJob = {
+        source: "github",
+        owner: "org",
+        repo: "repo",
+        prNumber: 1,
+        instruction: "do work",
+        triggeredBy: "user",
+      };
+
+      const prompt = buildPrompt(job);
+
+      // GitHub jobs should not have JIRA post-processing
+      expect(prompt).not.toContain("Transition to an appropriate status");
+    });
+  });
+
+  describe("GitHub branchId", () => {
+    it("includes branchName in prompt for GitHub jobs", () => {
+      const job: GitHubJob = {
+        source: "github",
+        owner: "org",
+        repo: "repo",
+        prNumber: 1,
+        branchName: "feature/my-branch",
+        instruction: "fix bug",
+        triggeredBy: "dev",
+      };
+
+      const prompt = buildPrompt(job);
+      expect(prompt).toContain("feature/my-branch");
+    });
+
+    it("includes branchId in prompt for admin jobs", () => {
+      const job: AdminJob = {
+        source: "admin",
+        instruction: "do work",
+        triggeredBy: "admin",
+        githubOwner: "org",
+        githubRepo: "repo",
+        githubBranchId: "fix/admin-branch",
+      };
+
+      const prompt = buildPrompt(job);
+      expect(prompt).toContain("fix/admin-branch");
+    });
+  });
+
   describe("prompt structure", () => {
     it("returns non-empty prompt with substantial content", () => {
       const job: JiraJob = {
