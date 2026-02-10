@@ -3,10 +3,10 @@ import {
   listSessions,
   getMaxSessions,
   getWorkspacesDir,
+  getPruneThresholdDays,
+  cleanupWorkspace,
   type SessionInfo,
 } from "@mapthew/shared/workspace";
-import type { SessionCleanupJob } from "@mapthew/shared/types";
-import { queue } from "../config.js";
 
 const router: Router = Router();
 
@@ -20,12 +20,14 @@ router.get("/", async (_req, res) => {
     const sessions = await listSessions();
     const activeSessions = sessions.filter((s: SessionInfo) => s.hasSession);
     const count = activeSessions.length;
-    const max = getMaxSessions();
+    const softCap = await getMaxSessions();
+    const pruneThresholdDays = await getPruneThresholdDays();
 
     res.json({
       count,
-      max,
-      available: max - count,
+      softCap,
+      available: Math.max(0, softCap - count),
+      pruneThresholdDays,
       workspacesDir: getWorkspacesDir(),
       sessions: sessions.map((s: SessionInfo) => ({
         issueKey: s.issueKey,
@@ -49,7 +51,8 @@ router.get("/", async (_req, res) => {
 router.get("/stats", async (_req, res) => {
   try {
     const sessions = await listSessions();
-    const max = getMaxSessions();
+    const softCap = await getMaxSessions();
+    const pruneThresholdDays = await getPruneThresholdDays();
 
     const activeSessions = sessions.filter((s: SessionInfo) => s.hasSession);
     const count = activeSessions.length;
@@ -58,9 +61,10 @@ router.get("/stats", async (_req, res) => {
     res.json({
       total: sessions.length,
       active: count,
-      max,
-      available: max - count,
-      utilizationPercent: Math.round((count / max) * 100),
+      softCap,
+      available: Math.max(0, softCap - count),
+      pruneThresholdDays,
+      utilizationPercent: Math.round((count / softCap) * 100),
       totalSizeBytes: totalSize,
       totalSizeMB: Math.round((totalSize / 1024 / 1024) * 100) / 100,
     });
@@ -73,7 +77,7 @@ router.get("/stats", async (_req, res) => {
 /**
  * DELETE /api/sessions/:issueKey - Delete a specific session
  *
- * Queues a cleanup job for the specified session.
+ * Directly removes the workspace and Claude session data.
  */
 router.delete("/:issueKey", async (req, res) => {
   const { issueKey } = req.params;
@@ -83,27 +87,16 @@ router.delete("/:issueKey", async (req, res) => {
   }
 
   try {
-    // Queue a cleanup job
-    const cleanupJob: SessionCleanupJob = {
-      type: "session-cleanup",
-      issueKey,
-      reason: "manual",
-    };
-
-    await queue.add("session-cleanup", cleanupJob, {
-      attempts: 1,
-      priority: 1, // High priority — cleanup frees session slots for waiting jobs
-    });
-
-    console.log(`[Session] Manual cleanup queued for ${issueKey}`);
+    await cleanupWorkspace(issueKey);
+    console.log(`[Session] Manual cleanup completed for ${issueKey}`);
 
     res.json({
       success: true,
-      message: `Cleanup queued for ${issueKey}`,
+      message: `Session cleaned up for ${issueKey}`,
     });
   } catch (error) {
-    console.error(`Error queuing cleanup for ${issueKey}:`, error);
-    res.status(500).json({ error: "Failed to queue cleanup" });
+    console.error(`Error cleaning up session ${issueKey}:`, error);
+    res.status(500).json({ error: "Failed to clean up session" });
   }
 });
 

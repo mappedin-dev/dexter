@@ -93,7 +93,6 @@ export default function Sessions() {
   }
 
   const sessions = data?.sessions.filter((s) => s.hasSession) ?? [];
-  const utilizationPercent = data ? Math.round((data.count / data.max) * 100) : 0;
   const totalSizeMB =
     sessions.reduce((sum, s) => sum + s.sizeMB, 0).toFixed(1);
 
@@ -113,9 +112,9 @@ export default function Sessions() {
 
       {data && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label={t("sessions.stats.active")} value={`${data.count} / ${data.max}`} accent />
+          <StatCard label={t("sessions.stats.active")} value={`${data.count} / ${data.softCap}`} accent />
           <StatCard label={t("sessions.stats.available")} value={data.available} />
-          <StatCard label={t("sessions.stats.utilization")} value={`${utilizationPercent}%`} />
+          <StatCard label={t("sessions.stats.pruneThreshold")} value={`${data.pruneThresholdDays}d`} />
           <StatCard label={t("sessions.stats.totalSize")} value={`${totalSizeMB} MB`} />
         </div>
       )}

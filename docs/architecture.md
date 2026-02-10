@@ -273,14 +273,18 @@ flowchart TD
 - **Workspace**: A directory at `WORKSPACES_DIR/{issueKey}` used as the working directory for Claude CLI. Persists across jobs.
 - **Claude session**: Claude CLI stores conversation history in `~/.claude/projects/{encoded-path}`. The `--continue` flag resumes the most recent conversation.
 - **Session counting**: Only workspaces with a matching Claude session directory count toward `MAX_SESSIONS`.
-- **Cleanup triggers**: Sessions are cleaned up on PR merge (via GitHub webhook) or manually (via the sessions API).
+- **Periodic pruning**: A background `setInterval` in the worker removes sessions inactive longer than `PRUNE_THRESHOLD_DAYS`. Runs every `PRUNE_INTERVAL_DAYS`.
+- **Soft cap (LRU eviction)**: When creating a new workspace and the session count >= `MAX_SESSIONS`, the oldest session is evicted to make room.
+- **Manual cleanup**: Sessions can be deleted via the dashboard API (`DELETE /api/sessions/:issueKey`), which calls `cleanupWorkspace()` directly.
 
 ### Environment Variables
 
-| Variable                   | Purpose                        | Default                        |
-| -------------------------- | ------------------------------ | ------------------------------ |
-| `WORKSPACES_DIR`           | Root directory for workspaces  | `/tmp/{botName}-workspaces`    |
-| `MAX_SESSIONS`             | Max concurrent sessions        | `5`                            |
+| Variable                   | Purpose                                         | Default                        |
+| -------------------------- | ----------------------------------------------- | ------------------------------ |
+| `WORKSPACES_DIR`           | Root directory for workspaces                   | `/tmp/{botName}-workspaces`    |
+| `MAX_SESSIONS`             | Soft cap — oldest session evicted when exceeded  | `5`                            |
+| `PRUNE_THRESHOLD_DAYS`     | Sessions inactive longer than this are pruned    | `7`                            |
+| `PRUNE_INTERVAL_DAYS`      | How often the pruning job runs                   | `7` (weekly)                   |
 
 ### Docker Volumes
 

@@ -121,8 +121,9 @@ export const api = {
   getSessions: () =>
     fetchJSON<{
       count: number;
-      max: number;
+      softCap: number;
       available: number;
+      pruneThresholdDays: number;
       workspacesDir: string;
       sessions: Array<{
         issueKey: string;

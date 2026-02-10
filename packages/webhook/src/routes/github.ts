@@ -2,9 +2,7 @@ import { Router } from "express";
 import type {
   GitHubJob,
   GitHubWebhookPayload,
-  GitHubPRPayload,
   GitHubReviewCommentPayload,
-  SessionCleanupJob,
 } from "@mapthew/shared/types";
 import {
   isGitHubPRCommentEvent,
@@ -22,12 +20,6 @@ const router: Router = Router();
 const REGULAR_JOB_OPTIONS = {
   attempts: 3,
   backoff: { type: "exponential" as const, delay: 5000 },
-  priority: 10, // Lower than cleanup jobs so they can free slots first
-};
-
-const CLEANUP_JOB_OPTIONS = {
-  attempts: 1,
-  priority: 1, // High priority — cleanup frees session slots for waiting jobs
 };
 
 /**
@@ -54,57 +46,7 @@ async function queueGitHubJob(
 }
 
 /**
- * Handle PR merge events - cleanup session
- */
-async function handlePRMerge(payload: GitHubPRPayload): Promise<void> {
-  const { login: owner } = payload.repository.owner;
-  const repo = payload.repository.name;
-  const prNumber = payload.pull_request.number;
-  const branchName = payload.pull_request.head.ref;
-
-  // Try to extract issue key from branch name (e.g., "feature/DXTR-123-add-auth")
-  const issueKey = extractIssueKeyFromBranch(branchName);
-
-  // Also create cleanup job for the GitHub-based session key
-  const ghIssueKey = `gh-${owner}-${repo}-${prNumber}`;
-
-  console.log(
-    `[Session] PR #${prNumber} merged in ${owner}/${repo}, branch: ${branchName}`,
-  );
-
-  // Queue cleanup for GitHub-based session
-  const ghCleanupJob: SessionCleanupJob = {
-    type: "session-cleanup",
-    issueKey: ghIssueKey,
-    reason: "pr-merged",
-    owner,
-    repo,
-    prNumber,
-  };
-
-  await queue.add("session-cleanup", ghCleanupJob, CLEANUP_JOB_OPTIONS);
-
-  console.log(`[Session] Queued cleanup for ${ghIssueKey}`);
-
-  // If we found a Jira issue key, queue cleanup for that too
-  if (issueKey) {
-    const jiraCleanupJob: SessionCleanupJob = {
-      type: "session-cleanup",
-      issueKey,
-      reason: "pr-merged",
-      owner,
-      repo,
-      prNumber,
-    };
-
-    await queue.add("session-cleanup", jiraCleanupJob, CLEANUP_JOB_OPTIONS);
-
-    console.log(`[Session] Queued cleanup for ${issueKey}`);
-  }
-}
-
-/**
- * GitHub webhook endpoint for PR and issue comments and merge events
+ * GitHub webhook endpoint for PR and issue comments
  */
 router.post("/", githubWebhookAuth, async (req, res) => {
   try {
@@ -115,19 +57,12 @@ router.post("/", githubWebhookAuth, async (req, res) => {
       return res.status(200).json({ status: "pong" });
     }
 
-    // Handle PR events (merge)
+    // PR merge/close events are ignored — sessions are pruned by the worker
+    // based on inactivity threshold rather than on PR lifecycle events
     if (event === "pull_request") {
-      const payload = req.body as GitHubPRPayload;
-
-      // Only process closed PRs that were merged
-      if (payload.action === "closed" && payload.pull_request?.merged) {
-        await handlePRMerge(payload);
-        return res.status(200).json({ status: "cleanup-queued" });
-      }
-
       return res.status(200).json({
         status: "ignored",
-        reason: "PR not merged or not closed",
+        reason: "pull_request events not processed",
       });
     }
 

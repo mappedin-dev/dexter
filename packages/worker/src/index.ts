@@ -4,17 +4,20 @@ import {
   isAdminJob,
   isGitHubJob,
   isJiraJob,
-  isSessionCleanupJob,
   getBotName,
 } from "@mapthew/shared/utils";
+import { initConfigStore } from "@mapthew/shared/config";
 import { postGitHubComment, postJiraComment } from "@mapthew/shared/api";
 import {
   getOrCreateWorkspace,
   hasExistingSession,
-  canCreateSession,
   workspaceExists,
-  cleanupWorkspace,
   getMaxSessions,
+  getSessionCount,
+  evictOldestSession,
+  pruneInactiveSessions,
+  getPruneThresholdDays,
+  getPruneIntervalDays,
 } from "@mapthew/shared/workspace";
 import { invokeClaudeCode } from "./claude.js";
 import { getReadableId, getIssueKey } from "./utils.js";
@@ -56,25 +59,6 @@ async function postComment(job: Job, comment: string): Promise<void> {
 }
 
 /**
- * Error thrown when session capacity is full.
- * BullMQ will retry the job with exponential backoff, allowing cleanup
- * jobs to run in between retries and free up slots.
- *
- * Without this, waitForSessionSlot() would block the single-concurrency
- * worker in a polling loop, preventing cleanup jobs from ever running —
- * a deadlock.
- */
-class SessionCapacityError extends Error {
-  constructor(maxSessions: number) {
-    super(
-      `At max session capacity (${maxSessions}). ` +
-        `Job will be retried to allow cleanup jobs to free slots.`,
-    );
-    this.name = "SessionCapacityError";
-  }
-}
-
-/**
  * Process a regular job using persistent workspaces for session reuse
  */
 async function processRegularJob(job: Job): Promise<void> {
@@ -87,15 +71,17 @@ async function processRegularJob(job: Job): Promise<void> {
   // Check if this job can reuse an existing session
   const hasExisting = await workspaceExists(issueKey);
 
-  // If no existing workspace and we're at capacity, throw to let BullMQ
-  // retry with backoff. This frees the worker to process cleanup jobs
-  // that may be waiting in the queue.
-  if (!hasExisting && !(await canCreateSession())) {
-    const max = getMaxSessions();
-    console.log(
-      `[Session] At max capacity (${max}), deferring job to allow cleanup jobs to run`,
-    );
-    throw new SessionCapacityError(max);
+  // Soft cap: if no existing workspace and at capacity, evict the oldest
+  // session (LRU) to make room instead of blocking
+  if (!hasExisting) {
+    const count = await getSessionCount();
+    const max = await getMaxSessions();
+    if (count >= max) {
+      console.log(
+        `[Session] At soft cap (${count}/${max}), evicting oldest session`,
+      );
+      await evictOldestSession();
+    }
   }
 
   // Get or create the persistent workspace
@@ -119,26 +105,14 @@ async function processRegularJob(job: Job): Promise<void> {
 
   console.log(`Job completed for ${jobId}`);
   // Note: We intentionally do NOT clean up the workspace here
-  // Workspaces are cleaned up when PRs are merged or manually
+  // Workspaces are pruned periodically based on inactivity threshold
 }
 
 /**
- * Process all job types (regular jobs and cleanup jobs)
+ * Process a queue job
  */
 async function processJob(bullJob: BullJob<QueueJob>): Promise<void> {
-  const job = bullJob.data;
-
-  // Handle session cleanup jobs
-  if (isSessionCleanupJob(job)) {
-    console.log(
-      `[Session] Processing cleanup for ${job.issueKey} (reason: ${job.reason})`,
-    );
-    await cleanupWorkspace(job.issueKey);
-    return;
-  }
-
-  // Handle regular jobs
-  await processRegularJob(job);
+  await processRegularJob(bullJob.data);
 }
 
 // Create worker
@@ -148,25 +122,6 @@ const worker = createWorker(REDIS_URL, processJob);
 worker.on("failed", async (job, err) => {
   if (job) {
     const data = job.data as QueueJob;
-
-    // Don't post comments for cleanup job failures
-    if (isSessionCleanupJob(data)) {
-      console.error(
-        `[Session] Cleanup failed for ${data.issueKey}:`,
-        err.message,
-      );
-      return;
-    }
-
-    // Don't post comments for capacity retries — these are expected and
-    // the job will be retried automatically by BullMQ
-    if (err instanceof SessionCapacityError) {
-      console.log(
-        `[Session] ${getReadableId(data)} deferred (attempt ${job.attemptsMade}/${job.opts.attempts}): ${err.message}`,
-      );
-      return;
-    }
-
     console.error(`Job failed for ${getReadableId(data)}:`, err.message);
     await postComment(data, `🤓 Oops, I hit an error: ${err.message}`);
   }
@@ -175,26 +130,54 @@ worker.on("failed", async (job, err) => {
 // Handle completed jobs
 worker.on("completed", (job) => {
   const data = job.data as QueueJob;
-
-  if (isSessionCleanupJob(data)) {
-    console.log(`[Session] Cleanup completed: ${data.issueKey}`);
-    return;
-  }
-
   console.log(`Job completed: ${getReadableId(data)}`);
 });
 
-console.log(`Worker started as @${getBotName()}, waiting for jobs...`);
+// --- Periodic session pruning ---
+
+async function runPrune(): Promise<void> {
+  const thresholdDays = await getPruneThresholdDays();
+  console.log(
+    `[Session] Running scheduled prune (threshold: ${thresholdDays} days)`,
+  );
+  try {
+    await pruneInactiveSessions(thresholdDays);
+  } catch (error) {
+    console.error("[Session] Prune failed:", error);
+  }
+}
+
+// Initialize config store so the worker can read settings from Redis,
+// then start pruning on schedule
+let pruneInterval: ReturnType<typeof setInterval>;
+
+async function startPruning(): Promise<void> {
+  await initConfigStore(REDIS_URL);
+  const intervalDays = await getPruneIntervalDays();
+  const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
+
+  // Run an initial prune, then on schedule
+  void runPrune();
+  pruneInterval = setInterval(() => void runPrune(), intervalMs);
+
+  console.log(
+    `Worker started as @${getBotName()}, waiting for jobs... (prune every ${intervalDays}d)`,
+  );
+}
+
+void startPruning();
 
 // Graceful shutdown
 process.on("SIGTERM", async () => {
   console.log("Shutting down worker...");
+  clearInterval(pruneInterval);
   await worker.close();
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
   console.log("Shutting down worker...");
+  clearInterval(pruneInterval);
   await worker.close();
   process.exit(0);
 });

@@ -52,6 +52,9 @@ export default function Settings() {
   const [botName, setBotName] = useState("");
   const [claudeModel, setClaudeModel] = useState<ClaudeModel | "">(CLAUDE_MODELS[0]);
   const [jiraBaseUrl, setJiraBaseUrl] = useState("");
+  const [maxSessions, setMaxSessions] = useState(5);
+  const [pruneThresholdDays, setPruneThresholdDays] = useState(7);
+  const [pruneIntervalDays, setPruneIntervalDays] = useState(7);
   const [touched, setTouched] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -70,11 +73,14 @@ export default function Settings() {
       setBotName(config.botName);
       setClaudeModel(config.claudeModel);
       setJiraBaseUrl(config.jiraBaseUrl);
+      setMaxSessions(config.maxSessions);
+      setPruneThresholdDays(config.pruneThresholdDays);
+      setPruneIntervalDays(config.pruneIntervalDays);
     }
   }, [config]);
 
   const mutation = useMutation({
-    mutationFn: (updates: { botName: string; claudeModel: ClaudeModel; jiraBaseUrl: string }) =>
+    mutationFn: (updates: Partial<{ botName: string; claudeModel: ClaudeModel; jiraBaseUrl: string; maxSessions: number; pruneThresholdDays: number; pruneIntervalDays: number }>) =>
       api.updateConfig(updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["config"] });
@@ -97,7 +103,7 @@ export default function Settings() {
     e.preventDefault();
     setTouched(true);
     if (!validationError && !jiraBaseUrlError && claudeModel) {
-      mutation.mutate({ botName, claudeModel, jiraBaseUrl });
+      mutation.mutate({ botName, claudeModel, jiraBaseUrl, maxSessions, pruneThresholdDays, pruneIntervalDays });
     }
   };
 
@@ -112,7 +118,10 @@ export default function Settings() {
   const hasChanges =
     botName !== config?.botName ||
     claudeModel !== config?.claudeModel ||
-    jiraBaseUrl !== config?.jiraBaseUrl;
+    jiraBaseUrl !== config?.jiraBaseUrl ||
+    maxSessions !== config?.maxSessions ||
+    pruneThresholdDays !== config?.pruneThresholdDays ||
+    pruneIntervalDays !== config?.pruneIntervalDays;
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
@@ -179,6 +188,68 @@ export default function Settings() {
               value={claudeModel}
               options={CLAUDE_MODELS.map((model) => ({ value: model, label: model }))}
               onChange={(value) => setClaudeModel(value as ClaudeModel)}
+            />
+          </div>
+        </div>
+
+        <div className="glass-card p-6 space-y-6">
+          <h2 className="text-lg font-semibold text-white">{t("settings.sessions.title")}</h2>
+
+          <div>
+            <label htmlFor="maxSessions" className="block text-sm font-medium text-dark-200">
+              {t("settings.sessions.maxSessions.label")}
+            </label>
+            <p className="text-sm text-dark-500 mt-1 mb-3">
+              {t("settings.sessions.maxSessions.description")}
+            </p>
+            <input
+              type="number"
+              id="maxSessions"
+              value={maxSessions}
+              onChange={(e) => setMaxSessions(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+              min={1}
+              max={100}
+              className="w-full px-4 py-3 bg-dark-950/50 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+            />
+          </div>
+
+          <hr className="border-dark-700" />
+
+          <div>
+            <label htmlFor="pruneThresholdDays" className="block text-sm font-medium text-dark-200">
+              {t("settings.sessions.pruneThreshold.label")}
+            </label>
+            <p className="text-sm text-dark-500 mt-1 mb-3">
+              {t("settings.sessions.pruneThreshold.description")}
+            </p>
+            <input
+              type="number"
+              id="pruneThresholdDays"
+              value={pruneThresholdDays}
+              onChange={(e) => setPruneThresholdDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
+              min={1}
+              max={365}
+              className="w-full px-4 py-3 bg-dark-950/50 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+            />
+          </div>
+
+          <hr className="border-dark-700" />
+
+          <div>
+            <label htmlFor="pruneIntervalDays" className="block text-sm font-medium text-dark-200">
+              {t("settings.sessions.pruneInterval.label")}
+            </label>
+            <p className="text-sm text-dark-500 mt-1 mb-3">
+              {t("settings.sessions.pruneInterval.description")}
+            </p>
+            <input
+              type="number"
+              id="pruneIntervalDays"
+              value={pruneIntervalDays}
+              onChange={(e) => setPruneIntervalDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 1)))}
+              min={1}
+              max={365}
+              className="w-full px-4 py-3 bg-dark-950/50 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
             />
           </div>
         </div>

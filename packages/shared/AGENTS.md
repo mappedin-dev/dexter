@@ -20,4 +20,5 @@ Front end packages should avoid importing from this file. Any code needed by fro
 - Claude CLI sessions live at `~/.claude/projects/{encoded-path}` (path with `/` replaced by `-`)
 - `getSessionCount()` counts workspaces that have a matching Claude session directory
 - `cleanupWorkspace()` removes both the workspace dir and the Claude session dir
-- `MAX_SESSIONS` limits concurrent sessions; the worker throws `SessionCapacityError` when full, letting BullMQ retry with backoff so cleanup jobs can run
+- `MAX_SESSIONS` is a soft cap; the worker evicts the oldest session (LRU) when exceeded
+- `pruneInactiveSessions()` removes sessions older than a configurable threshold

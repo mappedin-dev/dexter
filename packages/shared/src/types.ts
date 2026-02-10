@@ -16,6 +16,12 @@ export interface AppConfig {
   botName: string;
   claudeModel: ClaudeModel;
   jiraBaseUrl: string;
+  /** Soft cap — oldest session evicted when exceeded */
+  maxSessions: number;
+  /** Sessions inactive longer than this (days) are pruned */
+  pruneThresholdDays: number;
+  /** How often the pruning job runs (days) */
+  pruneIntervalDays: number;
 }
 
 /**
@@ -85,26 +91,14 @@ export interface AdminJob extends BaseJob {
 }
 
 /**
- * Session cleanup job (triggered by PR merge)
- */
-export interface SessionCleanupJob {
-  type: "session-cleanup";
-  issueKey: string;
-  reason: "pr-merged" | "manual";
-  owner?: string;
-  repo?: string;
-  prNumber?: number;
-}
-
-/**
  * Discriminated union of all job types
  */
 export type Job = JiraJob | GitHubJob | AdminJob;
 
 /**
- * Union of all queue job types (includes cleanup jobs)
+ * Union of all queue job types
  */
-export type QueueJob = Job | SessionCleanupJob;
+export type QueueJob = Job;
 
 /**
  * JIRA API credentials for posting comments

@@ -94,6 +94,21 @@
       "label": "Model",
       "description": "The model used when processing tasks"
     },
+    "sessions": {
+      "title": "Sessions",
+      "maxSessions": {
+        "label": "Max Sessions (Soft Cap)",
+        "description": "When this limit is reached, the oldest session is evicted to make room"
+      },
+      "pruneThreshold": {
+        "label": "Prune After (Days)",
+        "description": "Sessions inactive for longer than this are automatically cleaned up"
+      },
+      "pruneInterval": {
+        "label": "Prune Interval (Days)",
+        "description": "How often the pruning job runs. Changes take effect on worker restart."
+      }
+    },
     "integrations": {
       "title": "Integrations",
       "jira": {
@@ -127,7 +142,7 @@
     "stats": {
       "active": "Active",
       "available": "Available",
-      "utilization": "Utilization",
+      "pruneThreshold": "Prune After",
       "totalSize": "Total Size"
     },
     "table": {

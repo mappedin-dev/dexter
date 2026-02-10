@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { getBotName } from "./utils.js";
+import { getConfig } from "./config.js";
 
 /**
  * Session information for monitoring
@@ -32,10 +33,12 @@ export function _resetWorkspacesDirCache(): void {
 }
 
 /**
- * Get the max sessions limit (reads from env at runtime)
+ * Get the max sessions limit (soft cap).
+ * Reads from Redis config, falling back to env var / default.
  */
-export function getMaxSessions(): number {
-  return parseInt(process.env.MAX_SESSIONS || "5", 10);
+export async function getMaxSessions(): Promise<number> {
+  const config = await getConfig();
+  return config.maxSessions;
 }
 
 /**
@@ -172,12 +175,66 @@ export async function getSessionCount(): Promise<number> {
 }
 
 /**
- * Check if we can create a new session (under the limit)
+ * Get the prune threshold in days.
+ * Reads from Redis config, falling back to env var / default.
  */
-export async function canCreateSession(): Promise<boolean> {
-  const count = await getSessionCount();
-  const maxSessions = getMaxSessions();
-  return count < maxSessions;
+export async function getPruneThresholdDays(): Promise<number> {
+  const config = await getConfig();
+  return config.pruneThresholdDays;
+}
+
+/**
+ * Get the prune interval in days.
+ * Reads from Redis config, falling back to env var / default.
+ */
+export async function getPruneIntervalDays(): Promise<number> {
+  const config = await getConfig();
+  return config.pruneIntervalDays;
+}
+
+/**
+ * Evict the oldest (least recently used) session to free a slot.
+ * Returns the evicted issue key, or null if no sessions to evict.
+ */
+export async function evictOldestSession(): Promise<string | null> {
+  const oldest = await getOldestSession();
+  if (!oldest) return null;
+
+  console.log(
+    `[Session] Evicting oldest session: ${oldest.issueKey} (last used: ${oldest.lastUsed.toISOString()})`,
+  );
+  await cleanupWorkspace(oldest.issueKey);
+  return oldest.issueKey;
+}
+
+/**
+ * Prune all sessions whose lastUsed is older than the given threshold.
+ * Returns the list of pruned issue keys.
+ */
+export async function pruneInactiveSessions(
+  thresholdDays: number,
+): Promise<string[]> {
+  const sessions = await listSessions();
+  const cutoff = Date.now() - thresholdDays * 24 * 60 * 60 * 1000;
+  const pruned: string[] = [];
+
+  for (const session of sessions) {
+    if (session.lastUsed.getTime() < cutoff) {
+      console.log(
+        `[Session] Pruning inactive session: ${session.issueKey} (last used: ${session.lastUsed.toISOString()})`,
+      );
+      await cleanupWorkspace(session.issueKey);
+      pruned.push(session.issueKey);
+    }
+  }
+
+  if (pruned.length > 0) {
+    console.log(
+      `[Session] Pruned ${pruned.length} inactive session(s): ${pruned.join(", ")}`,
+    );
+  }
+
+  return pruned;
 }
 
 /**
@@ -278,7 +335,7 @@ export async function listSessions(): Promise<SessionInfo[]> {
 
 /**
  * Get the oldest session (least recently used)
- * Useful for potential LRU eviction in the future
+ * Used by evictOldestSession() for soft cap LRU eviction
  */
 export async function getOldestSession(): Promise<SessionInfo | null> {
   const sessions = await listSessions();

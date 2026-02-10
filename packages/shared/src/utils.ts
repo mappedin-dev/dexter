@@ -1,7 +1,5 @@
 import type {
   Job,
-  QueueJob,
-  SessionCleanupJob,
   JiraJob,
   GitHubJob,
   AdminJob,
@@ -94,13 +92,6 @@ export function getQueueName(): string {
  */
 export function getBranchPrefix(): string {
   return `${getBotName()}-bot`;
-}
-
-/**
- * Type guard for SessionCleanupJob
- */
-export function isSessionCleanupJob(job: QueueJob): job is SessionCleanupJob {
-  return "type" in job && job.type === "session-cleanup";
 }
 
 /**

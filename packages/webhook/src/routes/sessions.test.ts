@@ -3,19 +3,12 @@ import express, { type Request, type Response, type NextFunction } from "express
 import request from "supertest";
 
 // Use vi.hoisted to define mocks before vi.mock hoisting
-const mockQueue = vi.hoisted(() => ({
-  add: vi.fn().mockResolvedValue({ id: "job-123" }),
-}));
-
 const mockWorkspace = vi.hoisted(() => ({
   listSessions: vi.fn().mockResolvedValue([]),
-  getMaxSessions: vi.fn().mockReturnValue(5),
+  getMaxSessions: vi.fn().mockResolvedValue(5),
+  getPruneThresholdDays: vi.fn().mockResolvedValue(7),
   getWorkspacesDir: vi.fn().mockReturnValue("/tmp/test-workspaces"),
-}));
-
-// Mock config module
-vi.mock("../config.js", () => ({
-  queue: mockQueue,
+  cleanupWorkspace: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock workspace module
@@ -73,8 +66,10 @@ describe("Sessions routes", () => {
     vi.clearAllMocks();
     // Reset to default values
     mockWorkspace.listSessions.mockResolvedValue([]);
-    mockWorkspace.getMaxSessions.mockReturnValue(5);
+    mockWorkspace.getMaxSessions.mockResolvedValue(5);
+    mockWorkspace.getPruneThresholdDays.mockResolvedValue(7);
     mockWorkspace.getWorkspacesDir.mockReturnValue("/tmp/test-workspaces");
+    mockWorkspace.cleanupWorkspace.mockResolvedValue(undefined);
   });
 
   describe("authentication", () => {
@@ -99,7 +94,7 @@ describe("Sessions routes", () => {
       const res = await request(app).delete("/api/sessions/DXTR-123");
 
       expect(res.status).toBe(401);
-      expect(mockQueue.add).not.toHaveBeenCalled();
+      expect(mockWorkspace.cleanupWorkspace).not.toHaveBeenCalled();
     });
 
     it("rejects authenticated requests without admin permission", async () => {
@@ -132,7 +127,7 @@ describe("Sessions routes", () => {
           sizeBytes: 1048576,
         },
       ]);
-      mockWorkspace.getMaxSessions.mockReturnValue(5);
+      mockWorkspace.getMaxSessions.mockResolvedValue(5);
 
       const app = createAppWithoutAuth();
       const res = await request(app).get("/api/sessions");
@@ -140,8 +135,9 @@ describe("Sessions routes", () => {
       expect(res.status).toBe(200);
       expect(res.body).toEqual({
         count: 1,
-        max: 5,
+        softCap: 5,
         available: 4,
+        pruneThresholdDays: 7,
         workspacesDir: "/tmp/test-workspaces",
         sessions: [
           {
@@ -184,7 +180,7 @@ describe("Sessions routes", () => {
         { hasSession: false, sizeBytes: 500 },
         { hasSession: true, sizeBytes: 2000 },
       ]);
-      mockWorkspace.getMaxSessions.mockReturnValue(5);
+      mockWorkspace.getMaxSessions.mockResolvedValue(5);
 
       const app = createAppWithoutAuth();
       const res = await request(app).get("/api/sessions/stats");
@@ -193,8 +189,9 @@ describe("Sessions routes", () => {
       expect(res.body).toEqual({
         total: 3,
         active: 2,
-        max: 5,
+        softCap: 5,
         available: 3,
+        pruneThresholdDays: 7,
         utilizationPercent: 40,
         totalSizeBytes: 3000,
         totalSizeMB: 0,
@@ -213,24 +210,16 @@ describe("Sessions routes", () => {
   });
 
   describe("DELETE /api/sessions/:issueKey", () => {
-    it("queues a cleanup job", async () => {
+    it("directly cleans up the workspace", async () => {
       const app = createAppWithoutAuth();
       const res = await request(app).delete("/api/sessions/DXTR-123");
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual({
         success: true,
-        message: "Cleanup queued for DXTR-123",
+        message: "Session cleaned up for DXTR-123",
       });
-      expect(mockQueue.add).toHaveBeenCalledWith(
-        "session-cleanup",
-        {
-          type: "session-cleanup",
-          issueKey: "DXTR-123",
-          reason: "manual",
-        },
-        { attempts: 1, priority: 1 },
-      );
+      expect(mockWorkspace.cleanupWorkspace).toHaveBeenCalledWith("DXTR-123");
     });
 
     it("handles composite GitHub issue keys", async () => {
@@ -238,21 +227,17 @@ describe("Sessions routes", () => {
       const res = await request(app).delete("/api/sessions/gh-org-repo-42");
 
       expect(res.status).toBe(200);
-      expect(mockQueue.add).toHaveBeenCalledWith(
-        "session-cleanup",
-        expect.objectContaining({ issueKey: "gh-org-repo-42" }),
-        expect.any(Object),
-      );
+      expect(mockWorkspace.cleanupWorkspace).toHaveBeenCalledWith("gh-org-repo-42");
     });
 
-    it("returns 500 when queue add fails", async () => {
-      mockQueue.add.mockRejectedValue(new Error("redis down"));
+    it("returns 500 when cleanup fails", async () => {
+      mockWorkspace.cleanupWorkspace.mockRejectedValue(new Error("disk error"));
 
       const app = createAppWithoutAuth();
       const res = await request(app).delete("/api/sessions/DXTR-123");
 
       expect(res.status).toBe(500);
-      expect(res.body).toEqual({ error: "Failed to queue cleanup" });
+      expect(res.body).toEqual({ error: "Failed to clean up session" });
     });
   });
 });

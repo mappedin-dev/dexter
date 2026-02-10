@@ -12,11 +12,11 @@ BullMQ worker that spawns Claude Code CLI to process jobs.
 
 - Workspaces are **not** cleaned up after job completion — they persist for session reuse
 - On follow-up jobs, the worker uses `--continue` to resume the previous Claude conversation
-- Cleanup happens on PR merge (GitHub webhook) or manually (sessions API)
-- The worker also handles `SessionCleanupJob` queue messages alongside regular jobs
+- Inactive sessions are pruned periodically via `setInterval` (configurable threshold and interval)
+- At soft cap (`MAX_SESSIONS`), the oldest session is evicted (LRU) to make room for new ones
 
 ## Gotchas
 
 - `--dangerously-skip-permissions` required for non-interactive CLI usage
-- Workspaces persist after jobs — cleanup is triggered by PR merge or manual deletion, not job completion
+- Workspaces persist after jobs — cleanup is via periodic pruning or manual deletion, not job completion
 - Post error comments on failure so users know what happened

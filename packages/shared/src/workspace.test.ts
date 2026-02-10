@@ -8,9 +8,10 @@ import {
   workspaceExists,
   cleanupWorkspace,
   getSessionCount,
-  canCreateSession,
   listSessions,
   getOldestSession,
+  evictOldestSession,
+  pruneInactiveSessions,
   getWorkspacesDir,
   getMaxSessions,
   getClaudeSessionDir,
@@ -86,8 +87,8 @@ describe("workspace", () => {
   });
 
   describe("getMaxSessions", () => {
-    it("returns the configured max sessions", () => {
-      expect(getMaxSessions()).toBe(3);
+    it("returns the configured max sessions", async () => {
+      expect(await getMaxSessions()).toBe(3);
     });
   });
 
@@ -248,33 +249,14 @@ describe("workspace", () => {
     });
   });
 
-  describe("canCreateSession", () => {
-    it("returns true when under the limit", async () => {
-      // MAX_SESSIONS is 3, no sessions exist
-      expect(await canCreateSession()).toBe(true);
+  describe("evictOldestSession", () => {
+    it("returns null when no active sessions", async () => {
+      expect(await evictOldestSession()).toBeNull();
     });
 
-    it("returns false when at the limit", async () => {
-      // Create 3 workspaces with Claude sessions (at limit)
-      const ws1 = path.join(testWorkspacesDir, "WS-1");
-      const ws2 = path.join(testWorkspacesDir, "WS-2");
-      const ws3 = path.join(testWorkspacesDir, "WS-3");
-
-      await fs.mkdir(ws1, { recursive: true });
-      await fs.mkdir(ws2, { recursive: true });
-      await fs.mkdir(ws3, { recursive: true });
-
-      await createClaudeSession(ws1);
-      await createClaudeSession(ws2);
-      await createClaudeSession(ws3);
-
-      expect(await canCreateSession()).toBe(false);
-    });
-
-    it("returns true when sessions exist but under limit", async () => {
-      // Create 2 workspaces with Claude sessions (under limit of 3)
-      const ws1 = path.join(testWorkspacesDir, "WS-1");
-      const ws2 = path.join(testWorkspacesDir, "WS-2");
+    it("evicts the least recently used session", async () => {
+      const ws1 = path.join(testWorkspacesDir, "OLD-1");
+      const ws2 = path.join(testWorkspacesDir, "NEW-1");
 
       await fs.mkdir(ws1, { recursive: true });
       await fs.mkdir(ws2, { recursive: true });
@@ -282,7 +264,77 @@ describe("workspace", () => {
       await createClaudeSession(ws1);
       await createClaudeSession(ws2);
 
-      expect(await canCreateSession()).toBe(true);
+      await fs.writeFile(
+        path.join(ws1, ".dexter-last-used"),
+        new Date("2024-01-01").toISOString(),
+      );
+      await fs.writeFile(
+        path.join(ws2, ".dexter-last-used"),
+        new Date("2024-06-01").toISOString(),
+      );
+
+      const evicted = await evictOldestSession();
+      expect(evicted).toBe("OLD-1");
+
+      // OLD-1 should be cleaned up
+      await expect(fs.stat(ws1)).rejects.toThrow();
+      // NEW-1 should still exist
+      const stat = await fs.stat(ws2);
+      expect(stat.isDirectory()).toBe(true);
+    });
+  });
+
+  describe("pruneInactiveSessions", () => {
+    it("returns empty array when no sessions exist", async () => {
+      const pruned = await pruneInactiveSessions(7);
+      expect(pruned).toEqual([]);
+    });
+
+    it("prunes sessions older than threshold", async () => {
+      const ws1 = path.join(testWorkspacesDir, "OLD-1");
+      const ws2 = path.join(testWorkspacesDir, "RECENT-1");
+
+      await fs.mkdir(ws1, { recursive: true });
+      await fs.mkdir(ws2, { recursive: true });
+
+      // OLD-1: last used 30 days ago
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      await fs.writeFile(
+        path.join(ws1, ".dexter-last-used"),
+        thirtyDaysAgo.toISOString(),
+      );
+
+      // RECENT-1: last used now
+      await fs.writeFile(
+        path.join(ws2, ".dexter-last-used"),
+        new Date().toISOString(),
+      );
+
+      const pruned = await pruneInactiveSessions(7);
+      expect(pruned).toEqual(["OLD-1"]);
+
+      // OLD-1 should be cleaned up
+      await expect(fs.stat(ws1)).rejects.toThrow();
+      // RECENT-1 should still exist
+      const stat = await fs.stat(ws2);
+      expect(stat.isDirectory()).toBe(true);
+    });
+
+    it("does not prune sessions within threshold", async () => {
+      const ws1 = path.join(testWorkspacesDir, "RECENT-1");
+      await fs.mkdir(ws1, { recursive: true });
+
+      await fs.writeFile(
+        path.join(ws1, ".dexter-last-used"),
+        new Date().toISOString(),
+      );
+
+      const pruned = await pruneInactiveSessions(7);
+      expect(pruned).toEqual([]);
+
+      // Should still exist
+      const stat = await fs.stat(ws1);
+      expect(stat.isDirectory()).toBe(true);
     });
   });
 

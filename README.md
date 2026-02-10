@@ -50,11 +50,13 @@ Use Mapthew to update an open PR in GitHub.
 
 ## Configuration
 
-| Variable                     | Purpose                                           | Default                      |
-| ---------------------------- | ------------------------------------------------- | ---------------------------- |
-| **BOT_NAME**                 | Bot name used for triggers, branches, queue names | `mapthew`                    |
-| **WORKSPACES_DIR**           | Root directory for persistent workspaces          | `/tmp/{botName}-workspaces`  |
-| **MAX_SESSIONS**             | Maximum concurrent Claude sessions                | `5`                          |
+| Variable                     | Purpose                                                    | Default                      |
+| ---------------------------- | ---------------------------------------------------------- | ---------------------------- |
+| **BOT_NAME**                 | Bot name used for triggers, branches, queue names          | `mapthew`                    |
+| **WORKSPACES_DIR**           | Root directory for persistent workspaces                   | `/tmp/{botName}-workspaces`  |
+| **MAX_SESSIONS**             | Soft cap — oldest session evicted when exceeded            | `5`                          |
+| **PRUNE_THRESHOLD_DAYS**     | Sessions inactive longer than this are pruned              | `7`                          |
+| **PRUNE_INTERVAL_DAYS**      | How often the pruning job runs                             | `7` (weekly)                 |
 
 Set `BOT_NAME` to customize the trigger (e.g., `@mybot` instead of `@mapthew`), branch prefix, and internal identifiers.
 
@@ -88,7 +90,6 @@ Point to `/webhook/github` and enable these events:
 - Discussion comments
 - Issue comments
 - Pull request review comments
-- Pull requests
 
 ## Setup
 
@@ -112,16 +113,19 @@ Point to `/webhook/github` and enable these events:
 
    This runs Redis, the webhook server, and the worker via Docker Compose.
 
-   To do a full rebuild (clears volumes and rebuilds images without cache):
+   To rebuild without clearing data (preserves Redis config and workspaces):
 
    ```bash
    pnpm dev:rebuild
    ```
 
-   Use `dev:rebuild` when you change:
+   To do a full rebuild that also clears volumes:
 
-   - Dependencies in `package.json`
-   - Dockerfiles
+   ```bash
+   pnpm dev:rebuild-v
+   ```
+
+   Use `dev:rebuild` when you change dependencies or Dockerfiles. Use `dev:rebuild-v` when you need a completely fresh start.
 
 4. Start a [cloudflare tunnel](#cloudflare-tunnel).
 
