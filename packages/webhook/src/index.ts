@@ -9,6 +9,7 @@ import { jwtCheck, requireAdminPermission } from "./middleware/auth.js";
 import jiraRoutes from "./routes/jira.js";
 import githubRoutes from "./routes/github.js";
 import apiRoutes from "./routes/api/index.js";
+import sessionsRoutes from "./routes/sessions.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,13 +38,14 @@ app.use(
     verify: (req: Request, _res: Response, buf: Buffer) => {
       (req as RequestWithRawBody).rawBody = buf.toString("utf8");
     },
-  })
+  }),
 );
 
 // Routes
 app.use("/api", jwtCheck, requireAdminPermission, apiRoutes);
 app.use("/webhook/jira", jiraRoutes);
 app.use("/webhook/github", githubRoutes);
+app.use("/api/sessions", jwtCheck, requireAdminPermission, sessionsRoutes);
 
 // Health check
 app.get("/health", (_req, res) => {

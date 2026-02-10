@@ -28,6 +28,7 @@
   "nav": {
     "home": "Home",
     "tasks": "Tasks",
+    "sessions": "Sessions",
     "settings": "Settings"
   },
   "home": {
@@ -35,6 +36,8 @@
     "description": "I'm your AI intern. Come see what I'm up to.",
     "viewTasks": "Tasks",
     "viewTasksDescription": "See what I'm working on",
+    "sessions": "Sessions",
+    "sessionsDescription": "Active context sessions",
     "settings": "Settings",
     "settingsDescription": "Manage how I work"
   },
@@ -91,6 +94,21 @@
       "label": "Model",
       "description": "The model used when processing tasks"
     },
+    "sessions": {
+      "title": "Sessions",
+      "maxSessions": {
+        "label": "Max Sessions (Soft Cap)",
+        "description": "When this limit is reached, the oldest session is evicted to make room"
+      },
+      "pruneThreshold": {
+        "label": "Prune After (Days)",
+        "description": "Sessions inactive for longer than this are automatically cleaned up"
+      },
+      "pruneInterval": {
+        "label": "Prune Interval (Days)",
+        "description": "How often the pruning job runs. Changes take effect on worker restart."
+      }
+    },
     "integrations": {
       "title": "Integrations",
       "jira": {
@@ -115,6 +133,27 @@
       "notEditable": "Must be set as an environment variable"
     },
     "version": "Version {{version}}"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "description": "Active Claude Code sessions with cached context",
+    "errorLoading": "Error loading sessions: {{message}}",
+    "noSessions": "No active sessions",
+    "stats": {
+      "active": "Active",
+      "available": "Available",
+      "pruneThreshold": "Prune After",
+      "totalSize": "Total Size"
+    },
+    "table": {
+      "issueKey": "Issue Key",
+      "lastUsed": "Last Used",
+      "created": "Created",
+      "size": "Size",
+      "actions": "Actions"
+    },
+    "deleteConfirm": "Delete session for {{issueKey}}?",
+    "delete": "Delete"
   },
   "newTask": {
     "button": "Start a new task",

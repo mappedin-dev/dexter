@@ -16,6 +16,12 @@ export interface AppConfig {
   botName: string;
   claudeModel: ClaudeModel;
   jiraBaseUrl: string;
+  /** Soft cap — oldest session evicted when exceeded */
+  maxSessions: number;
+  /** Sessions inactive longer than this (days) are pruned */
+  pruneThresholdDays: number;
+  /** How often the pruning job runs (days) */
+  pruneIntervalDays: number;
 }
 
 /**
@@ -44,7 +50,8 @@ export interface GitHubJob extends BaseJob {
   repo: string;
   prNumber?: number;
   issueNumber?: number;
-  branchId?: string;
+  /** PR branch name (used to extract Jira issue key for session linking) */
+  branchName?: string;
 }
 
 /**
@@ -118,6 +125,37 @@ export interface GitHubWebhookPayload {
     number: number;
     pull_request?: {
       url: string;
+    };
+  };
+  repository: {
+    name: string;
+    owner: {
+      login: string;
+    };
+  };
+  sender: {
+    login: string;
+  };
+}
+
+/**
+ * GitHub webhook payload for pull_request_review_comment event
+ * Fired when a comment is made on a file diff in a PR review
+ */
+export interface GitHubReviewCommentPayload {
+  action: string;
+  comment: {
+    id: number;
+    body: string;
+    path: string;
+    user: {
+      login: string;
+    };
+  };
+  pull_request: {
+    number: number;
+    head: {
+      ref: string;
     };
   };
   repository: {

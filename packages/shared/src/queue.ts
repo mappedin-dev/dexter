@@ -4,6 +4,8 @@ import { getQueueName } from "./utils.js";
 
 /**
  * Create a BullMQ queue for adding jobs
+ *
+ * The queue accepts all job types (Jira, GitHub, and admin jobs)
  */
 export function createQueue(redisUrl: string): Queue<Job> {
   const connection = parseRedisUrl(redisUrl);
@@ -26,7 +28,7 @@ export function createQueue(redisUrl: string): Queue<Job> {
  */
 export function createWorker(
   redisUrl: string,
-  processor: Processor<Job>
+  processor: Processor<Job>,
 ): Worker<Job> {
   const connection = parseRedisUrl(redisUrl);
   return new Worker<Job>(getQueueName(), processor, {

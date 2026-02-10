@@ -11,6 +11,9 @@ vi.mock("@mapthew/shared/config", async () => {
       botName: "testbot",
       claudeModel: "claude-sonnet-4-5",
       jiraBaseUrl: "https://test.atlassian.net",
+      maxSessions: 5,
+      pruneThresholdDays: 7,
+      pruneIntervalDays: 7,
     }),
     saveConfig: vi.fn().mockResolvedValue(undefined),
   };

@@ -20,7 +20,10 @@ router.get("/", async (_req, res) => {
 // PUT /api/config - Updates and returns AppConfig
 router.put("/", async (req, res) => {
   try {
-    const { botName, claudeModel, jiraBaseUrl } = req.body as Partial<AppConfig>;
+    const {
+      botName, claudeModel, jiraBaseUrl,
+      maxSessions, pruneThresholdDays, pruneIntervalDays,
+    } = req.body as Partial<AppConfig>;
     const config = await getConfig();
 
     if (botName !== undefined) {
@@ -49,6 +52,30 @@ router.put("/", async (req, res) => {
         return;
       }
       config.jiraBaseUrl = jiraBaseUrl;
+    }
+
+    if (maxSessions !== undefined) {
+      if (!Number.isInteger(maxSessions) || maxSessions < 1 || maxSessions > 100) {
+        res.status(400).json({ error: "Max sessions must be an integer between 1 and 100." });
+        return;
+      }
+      config.maxSessions = maxSessions;
+    }
+
+    if (pruneThresholdDays !== undefined) {
+      if (!Number.isInteger(pruneThresholdDays) || pruneThresholdDays < 1 || pruneThresholdDays > 365) {
+        res.status(400).json({ error: "Prune threshold must be an integer between 1 and 365 days." });
+        return;
+      }
+      config.pruneThresholdDays = pruneThresholdDays;
+    }
+
+    if (pruneIntervalDays !== undefined) {
+      if (!Number.isInteger(pruneIntervalDays) || pruneIntervalDays < 1 || pruneIntervalDays > 365) {
+        res.status(400).json({ error: "Prune interval must be an integer between 1 and 365 days." });
+        return;
+      }
+      config.pruneIntervalDays = pruneIntervalDays;
     }
 
     await saveConfig(config);

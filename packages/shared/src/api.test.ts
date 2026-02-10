@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createHmac } from "crypto";
-import { verifyHmacSignature, postJiraComment, postGitHubComment } from "./api.js";
+import {
+  verifyHmacSignature,
+  postJiraComment,
+  postGitHubComment,
+  fetchGitHubPRDetails,
+} from "./api.js";
 import type { JiraCredentials } from "./types.js";
 
 describe("verifyHmacSignature", () => {
@@ -72,6 +77,74 @@ describe("verifyHmacSignature", () => {
   });
 });
 
+describe("fetchGitHubPRDetails", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.stubGlobal("fetch", originalFetch);
+  });
+
+  it("returns PR details on success", async () => {
+    const mockResponse = {
+      number: 42,
+      title: "Add new feature",
+      head: { ref: "feature/DXTR-123-new-feature" },
+      base: { ref: "main" },
+    };
+
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    } as Response);
+
+    const result = await fetchGitHubPRDetails("token", "owner", "repo", 42);
+
+    expect(result).toEqual({
+      number: 42,
+      title: "Add new feature",
+      branchName: "feature/DXTR-123-new-feature",
+      baseBranch: "main",
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.github.com/repos/owner/repo/pulls/42",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Authorization: "Bearer token",
+        }),
+      }),
+    );
+  });
+
+  it("returns null when token is not provided", async () => {
+    const result = await fetchGitHubPRDetails("", "owner", "repo", 42);
+    expect(result).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns null on API error", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      text: async () => "Not found",
+    } as Response);
+
+    const result = await fetchGitHubPRDetails("token", "owner", "repo", 999);
+    expect(result).toBeNull();
+  });
+
+  it("returns null on network error", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("Network error"));
+
+    const result = await fetchGitHubPRDetails("token", "owner", "repo", 42);
+    expect(result).toBeNull();
+  });
+});
+
 describe("postJiraComment", () => {
   const mockFetch = vi.fn();
   const originalFetch = global.fetch;
@@ -97,7 +170,11 @@ describe("postJiraComment", () => {
       json: () => Promise.resolve({ id: "123" }),
     });
 
-    const result = await postJiraComment(validCredentials, "TEST-123", "Test comment");
+    const result = await postJiraComment(
+      validCredentials,
+      "TEST-123",
+      "Test comment",
+    );
 
     expect(result).toEqual({ success: true });
     expect(mockFetch).toHaveBeenCalledWith(
@@ -107,7 +184,7 @@ describe("postJiraComment", () => {
         headers: expect.objectContaining({
           "Content-Type": "application/json",
         }),
-      })
+      }),
     );
   });
 
@@ -118,7 +195,11 @@ describe("postJiraComment", () => {
       apiToken: "",
     };
 
-    const result = await postJiraComment(incompleteCredentials, "TEST-123", "Test");
+    const result = await postJiraComment(
+      incompleteCredentials,
+      "TEST-123",
+      "Test",
+    );
 
     expect(result).toEqual({
       success: false,
@@ -161,14 +242,16 @@ describe("postJiraComment", () => {
 
     await postJiraComment(validCredentials, "TEST-123", "Test");
 
-    const expectedAuth = Buffer.from("test@example.com:test-token").toString("base64");
+    const expectedAuth = Buffer.from("test@example.com:test-token").toString(
+      "base64",
+    );
     expect(mockFetch).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: `Basic ${expectedAuth}`,
         }),
-      })
+      }),
     );
   });
 });
@@ -192,7 +275,13 @@ describe("postGitHubComment", () => {
       json: () => Promise.resolve({ id: 123 }),
     });
 
-    const result = await postGitHubComment("gh-token", "owner", "repo", 42, "Test comment");
+    const result = await postGitHubComment(
+      "gh-token",
+      "owner",
+      "repo",
+      42,
+      "Test comment",
+    );
 
     expect(result).toEqual({ success: true });
     expect(mockFetch).toHaveBeenCalledWith(
@@ -205,7 +294,7 @@ describe("postGitHubComment", () => {
           Accept: "application/vnd.github+json",
         }),
         body: JSON.stringify({ body: "Test comment" }),
-      })
+      }),
     );
   });
 
@@ -226,7 +315,13 @@ describe("postGitHubComment", () => {
       text: () => Promise.resolve("Not Found"),
     });
 
-    const result = await postGitHubComment("gh-token", "owner", "repo", 999, "Test");
+    const result = await postGitHubComment(
+      "gh-token",
+      "owner",
+      "repo",
+      999,
+      "Test",
+    );
 
     expect(result).toEqual({
       success: false,
@@ -237,7 +332,13 @@ describe("postGitHubComment", () => {
   it("returns error on network failure", async () => {
     mockFetch.mockRejectedValue(new Error("Connection refused"));
 
-    const result = await postGitHubComment("gh-token", "owner", "repo", 42, "Test");
+    const result = await postGitHubComment(
+      "gh-token",
+      "owner",
+      "repo",
+      42,
+      "Test",
+    );
 
     expect(result).toEqual({
       success: false,
