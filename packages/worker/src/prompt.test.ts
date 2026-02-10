@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildPrompt } from "./prompt.js";
+import { buildPrompt, buildJiraPostProcessing } from "./prompt.js";
 import type { JiraJob, GitHubJob, AdminJob } from "@mapthew/shared/types";
 
 describe("buildPrompt", () => {
@@ -165,6 +165,49 @@ describe("buildPrompt", () => {
 
       // GitHub jobs should not have JIRA post-processing
       expect(prompt).not.toContain("Transition to an appropriate status");
+    });
+  });
+
+  describe("buildJiraPostProcessing", () => {
+    it("returns only transition step when no labels configured", () => {
+      const result = buildJiraPostProcessing("", "");
+      expect(result).toBe(
+        '- Transition to an appropriate status (e.g., "Code Review", "In Review", "Ready for Review") based on available transitions'
+      );
+      expect(result).not.toContain("Add label");
+      expect(result).not.toContain("Remove label");
+    });
+
+    it("includes add label step when JIRA_LABEL_ADD is set", () => {
+      const result = buildJiraPostProcessing("claude-processed", "");
+      expect(result).toContain('- Add label: "claude-processed"');
+      expect(result).not.toContain("Remove label");
+      expect(result).toContain("Transition to an appropriate status");
+    });
+
+    it("includes remove label step when JIRA_LABEL_TRIGGER is set", () => {
+      const result = buildJiraPostProcessing("", "claude-ready");
+      expect(result).toContain('- Remove label: "claude-ready" (if present)');
+      expect(result).not.toContain("Add label");
+      expect(result).toContain("Transition to an appropriate status");
+    });
+
+    it("includes both label steps when both are set", () => {
+      const result = buildJiraPostProcessing("claude-processed", "claude-ready");
+      expect(result).toContain('- Add label: "claude-processed"');
+      expect(result).toContain('- Remove label: "claude-ready" (if present)');
+      expect(result).toContain("Transition to an appropriate status");
+    });
+
+    it("always includes transition step regardless of labels", () => {
+      const noLabels = buildJiraPostProcessing("", "");
+      const addOnly = buildJiraPostProcessing("done", "");
+      const removeOnly = buildJiraPostProcessing("", "ready");
+      const both = buildJiraPostProcessing("done", "ready");
+
+      for (const result of [noLabels, addOnly, removeOnly, both]) {
+        expect(result).toContain("Transition to an appropriate status");
+      }
     });
   });
 

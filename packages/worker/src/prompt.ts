@@ -14,14 +14,17 @@ const JIRA_LABEL_TRIGGER = process.env.JIRA_LABEL_TRIGGER || "";
 /**
  * Build JIRA post-processing instructions based on config
  */
-function buildJiraPostProcessing(): string {
+export function buildJiraPostProcessing(
+  labelAdd = JIRA_LABEL_ADD,
+  labelTrigger = JIRA_LABEL_TRIGGER
+): string {
   const steps: string[] = [];
 
-  if (JIRA_LABEL_ADD) {
-    steps.push(`- Add label: "${JIRA_LABEL_ADD}"`);
+  if (labelAdd) {
+    steps.push(`- Add label: "${labelAdd}"`);
   }
-  if (JIRA_LABEL_TRIGGER) {
-    steps.push(`- Remove label: "${JIRA_LABEL_TRIGGER}" (if present)`);
+  if (labelTrigger) {
+    steps.push(`- Remove label: "${labelTrigger}" (if present)`);
   }
   // Always include transition instruction - Claude figures out the right status
   steps.push(`- Transition to an appropriate status (e.g., "Code Review", "In Review", "Ready for Review") based on available transitions`);
