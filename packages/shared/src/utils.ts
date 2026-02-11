@@ -194,21 +194,17 @@ export function wasLabelAdded(
 }
 
 /**
- * Get the configured JIRA label trigger.
- * Accepts an optional AppConfig to read from Redis-backed config;
- * falls back to the JIRA_LABEL_TRIGGER env var.
+ * Get the configured JIRA label trigger from AppConfig.
  */
 export function getLabelTrigger(config?: { jiraLabelTrigger?: string }): string {
-  return config?.jiraLabelTrigger ?? process.env.JIRA_LABEL_TRIGGER ?? "";
+  return config?.jiraLabelTrigger ?? "";
 }
 
 /**
- * Get the configured JIRA label to add after processing.
- * Accepts an optional AppConfig to read from Redis-backed config;
- * falls back to the JIRA_LABEL_ADD env var.
+ * Get the configured JIRA label to add after processing from AppConfig.
  */
 export function getLabelAdd(config?: { jiraLabelAdd?: string }): string {
-  return config?.jiraLabelAdd ?? process.env.JIRA_LABEL_ADD ?? "";
+  return config?.jiraLabelAdd ?? "";
 }
 
 /**
