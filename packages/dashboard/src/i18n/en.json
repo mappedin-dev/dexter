@@ -94,6 +94,23 @@
       "label": "Model",
       "description": "The model used when processing tasks"
     },
+    "verboseLogs": {
+      "label": "Verbose Logging",
+      "description": "Log details for ignored webhook events (useful for debugging)"
+    },
+    "jiraLabels": {
+      "title": "JIRA Labels",
+      "trigger": {
+        "label": "Trigger Label",
+        "description": "When this label is added to a JIRA issue, a job is automatically created",
+        "placeholder": "e.g. claude-ready"
+      },
+      "add": {
+        "label": "Completion Label",
+        "description": "This label is added to the JIRA issue after the job finishes",
+        "placeholder": "e.g. claude-processed"
+      }
+    },
     "sessions": {
       "title": "Sessions",
       "maxSessions": {

@@ -15,7 +15,6 @@ vi.mock("../config.js", () => ({
     email: "test@example.com",
     apiToken: "mock-token",
   },
-  VERBOSE_LOGS: false,
 }));
 
 // Mock middleware to skip signature verification in tests

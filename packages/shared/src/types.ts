@@ -16,6 +16,12 @@ export interface AppConfig {
   botName: string;
   claudeModel: ClaudeModel;
   jiraBaseUrl: string;
+  /** Label that triggers a job when added to a JIRA issue */
+  jiraLabelTrigger: string;
+  /** Label to add to a JIRA issue after processing completes */
+  jiraLabelAdd: string;
+  /** Enable verbose logging for ignored webhook events */
+  verboseLogs: boolean;
   /** Soft cap — oldest session evicted when exceeded */
   maxSessions: number;
   /** Sessions inactive longer than this (days) are pruned */

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { JiraJob } from "@mapthew/shared/types";
 import { getLabelTrigger } from "@mapthew/shared/utils";
+import { getConfig } from "@mapthew/shared/config";
 import { queue, JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN } from "../../config.js";
 
 const router: Router = Router();
@@ -24,7 +25,8 @@ function extractProjectKey(issueKey: string): string {
  */
 router.post("/label-trigger", async (req, res) => {
   try {
-    const label = (req.body?.label as string) || getLabelTrigger();
+    const config = await getConfig();
+    const label = (req.body?.label as string) || getLabelTrigger(config);
 
     if (!label) {
       res.status(400).json({

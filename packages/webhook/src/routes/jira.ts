@@ -9,7 +9,8 @@ import {
   getLabelTrigger,
 } from "@mapthew/shared/utils";
 import { postJiraComment } from "@mapthew/shared/api";
-import { queue, jiraCredentials, VERBOSE_LOGS } from "../config.js";
+import { getConfig } from "@mapthew/shared/config";
+import { queue, jiraCredentials } from "../config.js";
 import { jiraWebhookAuth } from "../middleware/index.js";
 
 const router: Router = Router();
@@ -32,13 +33,20 @@ function extractProjectKey(issueKey: string): string {
 router.post("/", jiraWebhookAuth, async (req, res) => {
   try {
     const payload = req.body;
+    const config = await getConfig();
+    const eventType = payload.webhookEvent ?? "unknown";
+    const issueKey = payload.issue?.key ?? "unknown";
+
+    console.log(
+      `Jira webhook received: event=${eventType} issue=${issueKey}`,
+    );
 
     // --- Handle comment_created events (existing behaviour) ---
     if (isCommentCreatedEvent(payload as WebhookPayload)) {
       const commentPayload = payload as WebhookPayload;
       const instruction = extractBotInstruction(commentPayload.comment.body);
       if (!instruction) {
-        if (VERBOSE_LOGS)
+        if (config.verboseLogs)
           console.log(
             `Jira webhook ignored: no @${getBotName()} trigger in ${commentPayload.issue.key} comment by ${commentPayload.comment.author.displayName}`,
           );
@@ -69,18 +77,38 @@ router.post("/", jiraWebhookAuth, async (req, res) => {
     }
 
     // --- Handle jira:issue_updated events (label trigger) ---
-    const labelTrigger = getLabelTrigger();
-    if (
-      labelTrigger &&
-      isIssueUpdatedEvent(payload as JiraIssueUpdatedPayload)
-    ) {
+    const labelTrigger = getLabelTrigger(config);
+    if (isIssueUpdatedEvent(payload as JiraIssueUpdatedPayload)) {
       const updatedPayload = payload as JiraIssueUpdatedPayload;
+      const changelogItems = updatedPayload.changelog?.items ?? [];
+
+      console.log(
+        `Jira issue_updated: issue=${issueKey} labelTrigger="${labelTrigger || "(not configured)"}" changelog=${JSON.stringify(changelogItems)}`,
+      );
+
+      if (!labelTrigger) {
+        console.log(
+          `Jira webhook ignored: JIRA_LABEL_TRIGGER not configured`,
+        );
+        return res.status(200).json({
+          status: "ignored",
+          reason: "label trigger not configured",
+        });
+      }
 
       if (!wasLabelAdded(updatedPayload, labelTrigger)) {
-        if (VERBOSE_LOGS)
+        const labelChanges = changelogItems.filter(
+          (item: { field: string }) => item.field === "labels",
+        );
+        if (labelChanges.length === 0) {
           console.log(
-            `Jira webhook ignored: label "${labelTrigger}" was not added in ${updatedPayload.issue.key} update`,
+            `Jira webhook ignored: no "labels" field in changelog (fields changed: ${changelogItems.map((i: { field: string }) => i.field).join(", ") || "none"})`,
           );
+        } else {
+          console.log(
+            `Jira webhook ignored: label "${labelTrigger}" was not added. Label changes: ${JSON.stringify(labelChanges)}`,
+          );
+        }
         return res.status(200).json({
           status: "ignored",
           reason: `trigger label "${labelTrigger}" was not added`,
@@ -110,7 +138,7 @@ router.post("/", jiraWebhookAuth, async (req, res) => {
     }
 
     // --- Unhandled event ---
-    if (VERBOSE_LOGS)
+    if (config.verboseLogs)
       console.log(
         `Jira webhook ignored: unhandled event (webhookEvent: ${payload.webhookEvent ?? "unknown"})`,
       );
