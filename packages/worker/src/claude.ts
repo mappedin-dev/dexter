@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { Job } from "@mapthew/shared/types";
-import { getClaudeModel } from "@mapthew/shared/config";
+import { getConfig } from "@mapthew/shared/config";
 import { buildPrompt } from "./prompt.js";
 import { getReadableId } from "./utils.js";
 
@@ -38,6 +38,39 @@ export function getTimeoutMs(): number {
 }
 
 /**
+ * A buffer that retains only the most recent `maxBytes` of appended text.
+ * When the limit is exceeded, older content is discarded (tail approach).
+ */
+export class BoundedBuffer {
+  private buf = "";
+  private _truncated = false;
+  readonly maxBytes: number;
+
+  constructor(maxBytes: number) {
+    this.maxBytes = maxBytes;
+  }
+
+  /** Append text, discarding oldest content if the limit would be exceeded. */
+  append(text: string): void {
+    this.buf += text;
+    if (this.buf.length > this.maxBytes) {
+      this.buf = this.buf.slice(-this.maxBytes);
+      this._truncated = true;
+    }
+  }
+
+  /** Whether older content has been discarded at least once. */
+  get truncated(): boolean {
+    return this._truncated;
+  }
+
+  /** Return the current buffer contents. */
+  toString(): string {
+    return this.buf;
+  }
+}
+
+/**
  * Options for invoking Claude Code CLI
  */
 export interface InvokeOptions {
@@ -59,7 +92,9 @@ export async function invokeClaudeCode(
 ): Promise<{ success: boolean; output: string; error?: string }> {
   const { hasSession = false } = options;
   const prompt = await buildPrompt(job);
-  const model = await getClaudeModel();
+  const config = await getConfig();
+  const model = config.claudeModel;
+  const maxBytes = config.maxOutputBufferBytes;
   const timeoutMs = getTimeoutMs();
 
   return new Promise((resolve) => {
@@ -101,8 +136,10 @@ export async function invokeClaudeCode(
       stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stdout = "";
-    let stderr = "";
+    const stdoutBuf = new BoundedBuffer(maxBytes);
+    const stderrBuf = new BoundedBuffer(maxBytes);
+    let stdoutWarned = false;
+    let stderrWarned = false;
     let killed = false;
 
     // --- Timeout mechanism ---
@@ -126,18 +163,32 @@ export async function invokeClaudeCode(
 
     proc.stdout.on("data", (data) => {
       const text = data.toString();
-      stdout += text;
+      stdoutBuf.append(text);
       process.stdout.write(text);
+      if (stdoutBuf.truncated && !stdoutWarned) {
+        stdoutWarned = true;
+        console.warn(
+          `[Buffer] stdout buffer limit reached (${maxBytes} bytes) for ${getReadableId(job)} — older output truncated`,
+        );
+      }
     });
 
     proc.stderr.on("data", (data) => {
       const text = data.toString();
-      stderr += text;
+      stderrBuf.append(text);
       process.stderr.write(text);
+      if (stderrBuf.truncated && !stderrWarned) {
+        stderrWarned = true;
+        console.warn(
+          `[Buffer] stderr buffer limit reached (${maxBytes} bytes) for ${getReadableId(job)} — older output truncated`,
+        );
+      }
     });
 
     proc.on("close", (code) => {
       clearTimeout(timeoutId);
+      const stdout = stdoutBuf.toString();
+      const stderr = stderrBuf.toString();
 
       if (killed) {
         resolve({
@@ -160,7 +211,7 @@ export async function invokeClaudeCode(
       clearTimeout(timeoutId);
       resolve({
         success: false,
-        output: stdout,
+        output: stdoutBuf.toString(),
         error: `Failed to spawn process: ${err.message}`,
       });
     });

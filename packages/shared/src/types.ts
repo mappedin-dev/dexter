@@ -28,6 +28,8 @@ export interface AppConfig {
   pruneThresholdDays: number;
   /** How often the pruning job runs (days) */
   pruneIntervalDays: number;
+  /** Max stdout/stderr buffer per CLI invocation in bytes (default: 10 MB) */
+  maxOutputBufferBytes: number;
 }
 
 /**

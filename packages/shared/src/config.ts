@@ -21,6 +21,7 @@ function getDefaultConfig(): AppConfig {
     maxSessions: 20,
     pruneThresholdDays: 7,
     pruneIntervalDays: 7,
+    maxOutputBufferBytes: 10 * 1024 * 1024,
   };
 }
 
