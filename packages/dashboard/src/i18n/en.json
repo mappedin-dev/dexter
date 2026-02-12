@@ -94,10 +94,6 @@
       "label": "Model",
       "description": "The model used when processing tasks"
     },
-    "verboseLogs": {
-      "label": "Verbose Logging",
-      "description": "Log details for ignored webhook events (useful for debugging)"
-    },
     "jiraLabels": {
       "title": "JIRA Labels",
       "trigger": {

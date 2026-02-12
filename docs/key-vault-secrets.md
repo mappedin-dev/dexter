@@ -87,7 +87,7 @@ flowchart TD
 
 ### What stays as env vars (infrastructure/bootstrap -- not secrets)
 
-`PORT`, `REDIS_URL`, `AUTH0_DOMAIN`, `AUTH0_AUDIENCE`, `AUTH0_CLIENT_ID`, `VERBOSE_LOGS`
+`PORT`, `REDIS_URL`, `AUTH0_DOMAIN`, `AUTH0_AUDIENCE`, `AUTH0_CLIENT_ID`
 
 Plus the vault connection (same names in all environments):
 
