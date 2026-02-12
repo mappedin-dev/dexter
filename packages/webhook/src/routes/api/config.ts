@@ -22,7 +22,9 @@ router.put("/", async (req, res) => {
   try {
     const {
       botName, claudeModel, jiraBaseUrl,
+      jiraLabelTrigger, jiraLabelAdd, verboseLogs,
       maxSessions, pruneThresholdDays, pruneIntervalDays,
+      maxOutputBufferBytes,
     } = req.body as Partial<AppConfig>;
     const config = await getConfig();
 
@@ -54,6 +56,26 @@ router.put("/", async (req, res) => {
       config.jiraBaseUrl = jiraBaseUrl;
     }
 
+    if (jiraLabelTrigger !== undefined) {
+      if (jiraLabelTrigger.length > 255) {
+        res.status(400).json({ error: "Label trigger must be 255 characters or less." });
+        return;
+      }
+      config.jiraLabelTrigger = jiraLabelTrigger.trim();
+    }
+
+    if (jiraLabelAdd !== undefined) {
+      if (jiraLabelAdd.length > 255) {
+        res.status(400).json({ error: "Label add must be 255 characters or less." });
+        return;
+      }
+      config.jiraLabelAdd = jiraLabelAdd.trim();
+    }
+
+    if (verboseLogs !== undefined) {
+      config.verboseLogs = verboseLogs;
+    }
+
     if (maxSessions !== undefined) {
       if (!Number.isInteger(maxSessions) || maxSessions < 1 || maxSessions > 100) {
         res.status(400).json({ error: "Max sessions must be an integer between 1 and 100." });
@@ -76,6 +98,14 @@ router.put("/", async (req, res) => {
         return;
       }
       config.pruneIntervalDays = pruneIntervalDays;
+    }
+
+    if (maxOutputBufferBytes !== undefined) {
+      if (!Number.isInteger(maxOutputBufferBytes) || maxOutputBufferBytes < 1024 || maxOutputBufferBytes > 100 * 1024 * 1024) {
+        res.status(400).json({ error: "Max output buffer must be an integer between 1 KB and 100 MB." });
+        return;
+      }
+      config.maxOutputBufferBytes = maxOutputBufferBytes;
     }
 
     await saveConfig(config);

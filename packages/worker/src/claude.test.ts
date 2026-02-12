@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { BoundedBuffer, getMaxBufferBytes } from "./claude.js";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { BoundedBuffer, getTimeoutMs } from "./claude.js";
 
 describe("BoundedBuffer", () => {
   it("stores text within the limit", () => {
@@ -57,39 +57,53 @@ describe("BoundedBuffer", () => {
   });
 });
 
-describe("getMaxBufferBytes", () => {
-  const originalEnv = process.env.MAX_OUTPUT_BUFFER_BYTES;
+describe("getTimeoutMs", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
 
   afterEach(() => {
-    if (originalEnv === undefined) {
-      delete process.env.MAX_OUTPUT_BUFFER_BYTES;
-    } else {
-      process.env.MAX_OUTPUT_BUFFER_BYTES = originalEnv;
-    }
+    process.env = originalEnv;
   });
 
-  it("returns default (10 MB) when env is not set", () => {
-    delete process.env.MAX_OUTPUT_BUFFER_BYTES;
-    expect(getMaxBufferBytes()).toBe(10 * 1024 * 1024);
+  it("returns default 30 minutes when CLAUDE_TIMEOUT_MS is not set", () => {
+    delete process.env.CLAUDE_TIMEOUT_MS;
+    expect(getTimeoutMs()).toBe(30 * 60 * 1000);
   });
 
-  it("reads value from environment variable", () => {
-    process.env.MAX_OUTPUT_BUFFER_BYTES = "5242880";
-    expect(getMaxBufferBytes()).toBe(5242880);
+  it("returns parsed value when CLAUDE_TIMEOUT_MS is a valid number", () => {
+    process.env.CLAUDE_TIMEOUT_MS = "60000";
+    expect(getTimeoutMs()).toBe(60000);
   });
 
-  it("falls back to default for non-numeric values", () => {
-    process.env.MAX_OUTPUT_BUFFER_BYTES = "not-a-number";
-    expect(getMaxBufferBytes()).toBe(10 * 1024 * 1024);
+  it("returns default and warns for non-numeric value", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.CLAUDE_TIMEOUT_MS = "not-a-number";
+    expect(getTimeoutMs()).toBe(30 * 60 * 1000);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    warnSpy.mockRestore();
   });
 
-  it("falls back to default for zero", () => {
-    process.env.MAX_OUTPUT_BUFFER_BYTES = "0";
-    expect(getMaxBufferBytes()).toBe(10 * 1024 * 1024);
+  it("returns default and warns for zero", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.CLAUDE_TIMEOUT_MS = "0";
+    expect(getTimeoutMs()).toBe(30 * 60 * 1000);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    warnSpy.mockRestore();
   });
 
-  it("falls back to default for negative values", () => {
-    process.env.MAX_OUTPUT_BUFFER_BYTES = "-100";
-    expect(getMaxBufferBytes()).toBe(10 * 1024 * 1024);
+  it("returns default and warns for negative value", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    process.env.CLAUDE_TIMEOUT_MS = "-5000";
+    expect(getTimeoutMs()).toBe(30 * 60 * 1000);
+    expect(warnSpy).toHaveBeenCalledOnce();
+    warnSpy.mockRestore();
+  });
+
+  it("returns default when CLAUDE_TIMEOUT_MS is empty string", () => {
+    process.env.CLAUDE_TIMEOUT_MS = "";
+    expect(getTimeoutMs()).toBe(30 * 60 * 1000);
   });
 });
