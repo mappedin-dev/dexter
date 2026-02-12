@@ -18,9 +18,9 @@ function getDefaultConfig(): AppConfig {
     jiraLabelTrigger: process.env.JIRA_LABEL_TRIGGER ?? "claude-ready",
     jiraLabelAdd: process.env.JIRA_LABEL_ADD ?? "claude-processed",
     verboseLogs: process.env.VERBOSE_LOGS === "true",
-    maxSessions: parseInt(process.env.MAX_SESSIONS || "5", 10),
-    pruneThresholdDays: parseInt(process.env.PRUNE_THRESHOLD_DAYS || "7", 10),
-    pruneIntervalDays: parseInt(process.env.PRUNE_INTERVAL_DAYS || "7", 10),
+    maxSessions: 20,
+    pruneThresholdDays: 7,
+    pruneIntervalDays: 7,
   };
 }
 
