@@ -301,9 +301,9 @@ flowchart TD
 
 - **Workspace**: A directory at `WORKSPACES_DIR/{issueKey}` used as the working directory for Claude CLI. Persists across jobs.
 - **Claude session**: Claude CLI stores conversation history in `~/.claude/projects/{encoded-path}`. The `--continue` flag resumes the most recent conversation.
-- **Session counting**: Only workspaces with a matching Claude session directory count toward `MAX_SESSIONS`.
-- **Periodic pruning**: A background `setInterval` in the worker removes sessions inactive longer than `PRUNE_THRESHOLD_DAYS`. Runs every `PRUNE_INTERVAL_DAYS`.
-- **Soft cap (LRU eviction)**: When creating a new workspace and the session count >= `MAX_SESSIONS`, the oldest session is evicted to make room.
+- **Session counting**: Only workspaces with a matching Claude session directory count toward the soft cap.
+- **Periodic pruning**: A background `setInterval` in the worker removes sessions inactive longer than `pruneThresholdDays`. Runs every `pruneIntervalDays`.
+- **Soft cap (LRU eviction)**: When creating a new workspace and the session count >= `maxSessions` (configured via dashboard, default 20), the oldest session is evicted to make room.
 - **Manual cleanup**: Sessions can be deleted via the dashboard API (`DELETE /api/sessions/:issueKey`), which calls `cleanupWorkspace()` directly.
 
 ### Environment Variables
@@ -311,9 +311,8 @@ flowchart TD
 | Variable                   | Purpose                                         | Default                        |
 | -------------------------- | ----------------------------------------------- | ------------------------------ |
 | `WORKSPACES_DIR`           | Root directory for workspaces                   | `/tmp/{botName}-workspaces`    |
-| `MAX_SESSIONS`             | Soft cap — oldest session evicted when exceeded  | `5`                            |
-| `PRUNE_THRESHOLD_DAYS`     | Sessions inactive longer than this are pruned    | `7`                            |
-| `PRUNE_INTERVAL_DAYS`      | How often the pruning job runs                   | `7` (weekly)                   |
+
+Session settings (`maxSessions`, `pruneThresholdDays`, `pruneIntervalDays`) are configured via the dashboard Settings page.
 
 ### Docker Volumes
 
