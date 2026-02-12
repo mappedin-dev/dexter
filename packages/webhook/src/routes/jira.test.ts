@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
 
-// Use vi.hoisted to define mock before vi.mock hoisting
+// Use vi.hoisted to define mocks before vi.mock hoisting
 const mockQueue = vi.hoisted(() => ({
   add: vi.fn().mockResolvedValue({ id: "job-123" }),
 }));
+
+const mockGetConfig = vi.hoisted(() => vi.fn());
 
 // Mock config module
 vi.mock("../config.js", () => ({
@@ -39,6 +41,10 @@ vi.mock("@mapthew/shared/utils", async () => {
   };
 });
 
+vi.mock("@mapthew/shared/config", () => ({
+  getConfig: mockGetConfig,
+}));
+
 import jiraRouter from "./jira.js";
 import { postJiraComment } from "@mapthew/shared/api";
 
@@ -52,6 +58,11 @@ function createApp() {
 describe("JIRA webhook routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetConfig.mockResolvedValue({
+      jiraLabelTrigger: "claude-ready",
+      jiraLabelAdd: "claude-processed",
+      verboseLogs: false,
+    });
   });
 
   describe("POST /webhook/jira", () => {
@@ -160,10 +171,6 @@ describe("JIRA webhook routes", () => {
 
   describe("POST /webhook/jira - label trigger", () => {
     it("queues job when trigger label is added", async () => {
-      // Temporarily set the env var for this test
-      const original = process.env.JIRA_LABEL_TRIGGER;
-      process.env.JIRA_LABEL_TRIGGER = "claude-ready";
-
       const payload = {
         webhookEvent: "jira:issue_updated",
         issue: {
@@ -204,14 +211,9 @@ describe("JIRA webhook routes", () => {
         expect.any(Object)
       );
       expect(postJiraComment).toHaveBeenCalled();
-
-      process.env.JIRA_LABEL_TRIGGER = original;
     });
 
     it("ignores issue_updated when trigger label is not added", async () => {
-      const original = process.env.JIRA_LABEL_TRIGGER;
-      process.env.JIRA_LABEL_TRIGGER = "claude-ready";
-
       const payload = {
         webhookEvent: "jira:issue_updated",
         issue: { key: "PROJ-789" },
@@ -236,13 +238,14 @@ describe("JIRA webhook routes", () => {
       expect(res.body.status).toBe("ignored");
       expect(res.body.reason).toContain("was not added");
       expect(mockQueue.add).not.toHaveBeenCalled();
-
-      process.env.JIRA_LABEL_TRIGGER = original;
     });
 
-    it("ignores issue_updated when no label trigger is configured", async () => {
-      const original = process.env.JIRA_LABEL_TRIGGER;
-      delete process.env.JIRA_LABEL_TRIGGER;
+    it("ignores issue_updated when label trigger is explicitly disabled", async () => {
+      mockGetConfig.mockResolvedValue({
+        jiraLabelTrigger: "",
+        jiraLabelAdd: "",
+        verboseLogs: false,
+      });
 
       const payload = {
         webhookEvent: "jira:issue_updated",
@@ -266,15 +269,43 @@ describe("JIRA webhook routes", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe("ignored");
+      expect(res.body.reason).toBe("label trigger not configured");
       expect(mockQueue.add).not.toHaveBeenCalled();
+    });
 
-      process.env.JIRA_LABEL_TRIGGER = original;
+    it("uses custom label trigger from config", async () => {
+      mockGetConfig.mockResolvedValue({
+        jiraLabelTrigger: "auto-implement",
+        jiraLabelAdd: "claude-processed",
+        verboseLogs: false,
+      });
+
+      const payload = {
+        webhookEvent: "jira:issue_updated",
+        issue: { key: "PROJ-789" },
+        changelog: {
+          items: [
+            {
+              field: "labels",
+              fromString: "",
+              toString: "auto-implement",
+            },
+          ],
+        },
+        user: { displayName: "Jane Doe" },
+      };
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/webhook/jira")
+        .send(payload);
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe("queued");
+      expect(mockQueue.add).toHaveBeenCalled();
     });
 
     it("uses 'label-trigger' as triggeredBy when user is not provided", async () => {
-      const original = process.env.JIRA_LABEL_TRIGGER;
-      process.env.JIRA_LABEL_TRIGGER = "claude-ready";
-
       const payload = {
         webhookEvent: "jira:issue_updated",
         issue: { key: "PROJ-100" },
@@ -303,8 +334,6 @@ describe("JIRA webhook routes", () => {
         }),
         expect.any(Object)
       );
-
-      process.env.JIRA_LABEL_TRIGGER = original;
     });
   });
 });
