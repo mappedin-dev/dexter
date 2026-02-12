@@ -243,6 +243,9 @@ export default function Settings() {
               className="w-full px-4 py-3 bg-dark-950/50 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
               placeholder={t("settings.jiraLabels.trigger.placeholder")}
             />
+            <p className="text-sm text-dark-600 mt-3 italic">
+              {t("settings.jiraLabels.trigger.hint")}
+            </p>
           </div>
 
           <hr className="border-dark-700" />
@@ -263,6 +266,9 @@ export default function Settings() {
               className="w-full px-4 py-3 bg-dark-950/50 border border-dark-700 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
               placeholder={t("settings.jiraLabels.add.placeholder")}
             />
+            <p className="text-sm text-dark-600 mt-3 italic">
+              {t("settings.jiraLabels.add.hint")}
+            </p>
           </div>
         </div>
 

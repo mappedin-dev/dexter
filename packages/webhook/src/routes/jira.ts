@@ -65,7 +65,7 @@ router.post("/", jiraWebhookAuth, async (req, res) => {
 
       console.log(`Job queued for ${job.issueKey}: ${job.instruction}`);
 
-      await postJiraComment(jiraCredentials, job.issueKey, "\uD83E\uDD13 Okie dokie!");
+      await postJiraComment(jiraCredentials, job.issueKey, "🤓 Okie dokie!");
 
       return res.status(200).json({ status: "queued", issueKey: job.issueKey });
     }
@@ -112,7 +112,7 @@ router.post("/", jiraWebhookAuth, async (req, res) => {
         `Job queued for ${job.issueKey} via label trigger "${labelTrigger}"`,
       );
 
-      await postJiraComment(jiraCredentials, job.issueKey, "\uD83E\uDD13 Okie dokie!");
+      await postJiraComment(jiraCredentials, job.issueKey, "🤓 Okie dokie!");
 
       return res.status(200).json({ status: "queued", issueKey: job.issueKey });
     }
