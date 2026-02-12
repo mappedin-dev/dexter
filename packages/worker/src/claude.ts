@@ -33,7 +33,7 @@ export async function invokeClaudeCode(
   options: InvokeOptions = {},
 ): Promise<{ success: boolean; output: string; error?: string }> {
   const { hasSession = false } = options;
-  const prompt = buildPrompt(job);
+  const prompt = await buildPrompt(job);
   const model = await getClaudeModel();
 
   return new Promise((resolve) => {
