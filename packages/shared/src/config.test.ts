@@ -19,8 +19,8 @@ function buildConfig(overrides: Record<string, unknown> = {}) {
   return {
     botName: "mapthew",
     claudeModel: "claude-sonnet-4-5" as const,
-    jiraLabelTrigger: "claude-ready",
-    jiraLabelAdd: "claude-processed",
+    jiraLabelTrigger: "mapthew-ready",
+    jiraLabelAdd: "mapthew-processed",
     maxSessions: 20,
     pruneThresholdDays: 7,
     pruneIntervalDays: 7,

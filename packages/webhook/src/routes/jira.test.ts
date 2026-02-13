@@ -70,8 +70,8 @@ describe("JIRA webhook routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetConfig.mockResolvedValue({
-      jiraLabelTrigger: "claude-ready",
-      jiraLabelAdd: "claude-processed",
+      jiraLabelTrigger: "mapthew-ready",
+      jiraLabelAdd: "mapthew-processed",
     });
   });
 
@@ -248,7 +248,7 @@ describe("JIRA webhook routes", () => {
             {
               field: "labels",
               fromString: "bug",
-              toString: "bug claude-ready",
+              toString: "bug mapthew-ready",
             },
           ],
         },
@@ -287,7 +287,7 @@ describe("JIRA webhook routes", () => {
           items: [
             {
               field: "labels",
-              fromString: "bug claude-ready",
+              fromString: "bug mapthew-ready",
               toString: "bug",
             },
           ],
@@ -320,7 +320,7 @@ describe("JIRA webhook routes", () => {
             {
               field: "labels",
               fromString: "",
-              toString: "claude-ready",
+              toString: "mapthew-ready",
             },
           ],
         },
@@ -341,7 +341,7 @@ describe("JIRA webhook routes", () => {
     it("uses custom label trigger from config", async () => {
       mockGetConfig.mockResolvedValue({
         jiraLabelTrigger: "auto-implement",
-        jiraLabelAdd: "claude-processed",
+        jiraLabelAdd: "mapthew-processed",
       });
 
       const payload = {
@@ -378,7 +378,7 @@ describe("JIRA webhook routes", () => {
             {
               field: "labels",
               fromString: null,
-              toString: "claude-ready",
+              toString: "mapthew-ready",
             },
           ],
         },

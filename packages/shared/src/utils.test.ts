@@ -518,12 +518,12 @@ describe("wasLabelAdded", () => {
           {
             field: "labels",
             fromString: "bug",
-            toString: "bug claude-ready",
+            toString: "bug mapthew-ready",
           },
         ],
       },
     };
-    expect(wasLabelAdded(payload, "claude-ready")).toBe(true);
+    expect(wasLabelAdded(payload, "mapthew-ready")).toBe(true);
   });
 
   it("returns false when label was removed", () => {
@@ -534,13 +534,13 @@ describe("wasLabelAdded", () => {
         items: [
           {
             field: "labels",
-            fromString: "bug claude-ready",
+            fromString: "bug mapthew-ready",
             toString: "bug",
           },
         ],
       },
     };
-    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+    expect(wasLabelAdded(payload, "mapthew-ready")).toBe(false);
   });
 
   it("returns false when label was already present", () => {
@@ -551,13 +551,13 @@ describe("wasLabelAdded", () => {
         items: [
           {
             field: "labels",
-            fromString: "bug claude-ready",
-            toString: "bug claude-ready feature",
+            fromString: "bug mapthew-ready",
+            toString: "bug mapthew-ready feature",
           },
         ],
       },
     };
-    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+    expect(wasLabelAdded(payload, "mapthew-ready")).toBe(false);
   });
 
   it("detects label added from empty labels", () => {
@@ -569,12 +569,12 @@ describe("wasLabelAdded", () => {
           {
             field: "labels",
             fromString: null,
-            toString: "claude-ready",
+            toString: "mapthew-ready",
           },
         ],
       },
     };
-    expect(wasLabelAdded(payload, "claude-ready")).toBe(true);
+    expect(wasLabelAdded(payload, "mapthew-ready")).toBe(true);
   });
 
   it("returns false when changelog has no label changes", () => {
@@ -591,7 +591,7 @@ describe("wasLabelAdded", () => {
         ],
       },
     };
-    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+    expect(wasLabelAdded(payload, "mapthew-ready")).toBe(false);
   });
 
   it("returns false when no changelog present", () => {
@@ -599,7 +599,7 @@ describe("wasLabelAdded", () => {
       webhookEvent: "jira:issue_updated",
       issue: { key: "PROJ-123" },
     };
-    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+    expect(wasLabelAdded(payload, "mapthew-ready")).toBe(false);
   });
 
   it("handles different label being looked for", () => {
@@ -616,21 +616,21 @@ describe("wasLabelAdded", () => {
         ],
       },
     };
-    expect(wasLabelAdded(payload, "claude-ready")).toBe(false);
+    expect(wasLabelAdded(payload, "mapthew-ready")).toBe(false);
     expect(wasLabelAdded(payload, "bug")).toBe(true);
   });
 });
 
 describe("getLabelTrigger", () => {
   it("returns label from config when provided", () => {
-    expect(getLabelTrigger({ jiraLabelTrigger: "claude-ready" })).toBe("claude-ready");
+    expect(getLabelTrigger({ jiraLabelTrigger: "mapthew-ready" })).toBe("mapthew-ready");
   });
 
-  it("returns default 'claude-ready' when no config provided", () => {
-    expect(getLabelTrigger()).toBe("claude-ready");
+  it("returns default 'mapthew-ready' when no config provided", () => {
+    expect(getLabelTrigger()).toBe("mapthew-ready");
   });
 
-  it("returns default 'claude-ready' when config has no jiraLabelTrigger", () => {
-    expect(getLabelTrigger({})).toBe("claude-ready");
+  it("returns default 'mapthew-ready' when config has no jiraLabelTrigger", () => {
+    expect(getLabelTrigger({})).toBe("mapthew-ready");
   });
 });

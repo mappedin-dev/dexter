@@ -179,23 +179,23 @@ describe("buildPrompt", () => {
     });
 
     it("includes add label step when JIRA_LABEL_ADD is set", () => {
-      const result = buildJiraPostProcessing("claude-processed", "");
-      expect(result).toContain('- Add label: "claude-processed"');
+      const result = buildJiraPostProcessing("mapthew-processed", "");
+      expect(result).toContain('- Add label: "mapthew-processed"');
       expect(result).not.toContain("Remove label");
       expect(result).toContain("Transition to an appropriate status");
     });
 
     it("includes remove label step when JIRA_LABEL_TRIGGER is set", () => {
-      const result = buildJiraPostProcessing("", "claude-ready");
-      expect(result).toContain('- Remove label: "claude-ready" (if present)');
+      const result = buildJiraPostProcessing("", "mapthew-ready");
+      expect(result).toContain('- Remove label: "mapthew-ready" (if present)');
       expect(result).not.toContain("Add label");
       expect(result).toContain("Transition to an appropriate status");
     });
 
     it("includes both label steps when both are set", () => {
-      const result = buildJiraPostProcessing("claude-processed", "claude-ready");
-      expect(result).toContain('- Add label: "claude-processed"');
-      expect(result).toContain('- Remove label: "claude-ready" (if present)');
+      const result = buildJiraPostProcessing("mapthew-processed", "mapthew-ready");
+      expect(result).toContain('- Add label: "mapthew-processed"');
+      expect(result).toContain('- Remove label: "mapthew-ready" (if present)');
       expect(result).toContain("Transition to an appropriate status");
     });
 
