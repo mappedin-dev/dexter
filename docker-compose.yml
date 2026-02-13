@@ -81,6 +81,7 @@ services:
       - CLAUDE_CONFIG_DIR=/data/claude-sessions
       - PORT=${WEBHOOK_PORT:-3000}
       - REDIS_URL=redis://redis:6379
+      # LOCAL DEV ONLY — required for Lowkey Vault self-signed certs. DO NOT use in production.
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       - AZURE_KEYVAULT_URL
       - AZURE_IDENTITY_ENDPOINT
@@ -107,6 +108,7 @@ services:
       - claude-sessions:/home/worker/.claude         # Persist Claude CLI sessions
     environment:
       - REDIS_URL=redis://redis:6379
+      # LOCAL DEV ONLY — required for Lowkey Vault self-signed certs. DO NOT use in production.
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       - AZURE_KEYVAULT_URL
       - AZURE_IDENTITY_ENDPOINT

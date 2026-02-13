@@ -21,8 +21,13 @@ router.put("/", async (req, res) => {
   try {
     const { key, value } = req.body as { key: string; value: string };
 
-    if (!key || !value) {
+    if (!key || typeof value !== "string" || !value.trim()) {
       res.status(400).json({ error: "key and value are required" });
+      return;
+    }
+
+    if (value.length > 4096) {
+      res.status(400).json({ error: "value exceeds maximum length" });
       return;
     }
 
@@ -31,7 +36,7 @@ router.put("/", async (req, res) => {
       return;
     }
 
-    await secretsManager.set(key as SecretKey, value);
+    await secretsManager.set(key as SecretKey, value.trim());
     res.json({ success: true });
   } catch (error) {
     console.error("Error setting secret:", error);

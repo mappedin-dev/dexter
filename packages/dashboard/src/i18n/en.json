@@ -147,6 +147,7 @@
       "notConfigured": "Not configured",
       "editSecret": "Edit secret",
       "deleteSecret": "Clear secret",
+      "deleteConfirm": "Are you sure you want to delete this secret?",
       "saveSecret": "Save",
       "cancelEdit": "Cancel"
     },

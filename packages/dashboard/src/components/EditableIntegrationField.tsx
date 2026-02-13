@@ -40,6 +40,7 @@ export function EditableIntegrationField({
   };
 
   const handleDelete = async () => {
+    if (!window.confirm(t("settings.integrations.deleteConfirm"))) return;
     setIsSaving(true);
     setError(null);
     try {
@@ -56,9 +57,18 @@ export function EditableIntegrationField({
       <div className="flex items-center gap-4">
         <span className="text-sm text-dark-400 shrink-0 w-28">{label}</span>
         <input
+          key={value}
           type={inputType}
           defaultValue={value}
-          onBlur={(e) => handleSave(e.target.value)}
+          onBlur={(e) => {
+            const trimmed = e.target.value.trim();
+            if (!trimmed && value) {
+              // Reset to previous value if the user cleared the field
+              e.target.value = value;
+              return;
+            }
+            handleSave(e.target.value);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}

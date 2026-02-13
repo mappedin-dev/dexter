@@ -118,11 +118,17 @@ export class SecretsManager {
   private client: SecretClient | null = null;
   private cache = new Map<SecretKey, string | undefined>();
   private cacheLoadedAt = 0;
+  private refreshPromise: Promise<void> | null = null;
   readonly readOnly: boolean;
   private static CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   constructor({ readOnly = true }: { readOnly?: boolean } = {}) {
     this.readOnly = readOnly;
+  }
+
+  private assertInitialized(): asserts this is { client: SecretClient } {
+    if (!this.client)
+      throw new Error("SecretsManager.init() must be called before use");
   }
 
   async init(options: {
@@ -184,8 +190,9 @@ export class SecretsManager {
     if (this.readOnly) {
       throw new Error("SecretsManager is in read-only mode");
     }
+    this.assertInitialized();
     const { vaultKey } = SECRET_KEYS[key];
-    await this.client!.setSecret(vaultKey, value);
+    await this.client.setSecret(vaultKey, value);
     this.cache.set(key, value);
   }
 
@@ -193,12 +200,13 @@ export class SecretsManager {
     if (this.readOnly) {
       throw new Error("SecretsManager is in read-only mode");
     }
+    this.assertInitialized();
     const { vaultKey } = SECRET_KEYS[key];
     // Soft-delete the secret, then purge it so it's permanently removed
     // and can be re-created with the same name later.
-    const poller = await this.client!.beginDeleteSecret(vaultKey);
+    const poller = await this.client.beginDeleteSecret(vaultKey);
     await poller.pollUntilDone();
-    await this.client!.purgeDeletedSecret(vaultKey);
+    await this.client.purgeDeletedSecret(vaultKey);
     this.cache.delete(key);
   }
 
@@ -244,18 +252,35 @@ export class SecretsManager {
   }
 
   async refresh(): Promise<void> {
+    // Deduplicate concurrent refresh calls — return the pending promise
+    // so multiple callers don't each trigger a full vault fetch.
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+    this.refreshPromise = this.doRefresh().finally(() => {
+      this.refreshPromise = null;
+    });
+    return this.refreshPromise;
+  }
+
+  private async doRefresh(): Promise<void> {
+    this.assertInitialized();
+    // Build into a temporary map so the cache is swapped atomically —
+    // a partial failure won't leave the cache in an inconsistent state.
+    const newCache = new Map<SecretKey, string | undefined>();
     for (const [key, { vaultKey }] of Object.entries(SECRET_KEYS)) {
       try {
-        const secret = await this.client!.getSecret(vaultKey);
-        this.cache.set(key as SecretKey, secret.value);
+        const secret = await this.client.getSecret(vaultKey);
+        newCache.set(key as SecretKey, secret.value);
       } catch (err) {
         if (isSecretNotFound(err)) {
-          this.cache.set(key as SecretKey, undefined);
+          newCache.set(key as SecretKey, undefined);
         } else {
           throw err;
         }
       }
     }
+    this.cache = newCache;
     this.cacheLoadedAt = Date.now();
   }
 

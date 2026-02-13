@@ -72,4 +72,7 @@ app.get("/health", (_req, res) => {
     console.log(`Webhook server listening on port ${PORT}`);
     console.log(`  Listening as: @${getBotName()}`);
   });
-})();
+})().catch((err) => {
+  console.error("Fatal: failed to start server:", err);
+  process.exit(1);
+});

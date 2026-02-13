@@ -42,6 +42,7 @@ export function EditableSecretField({
   };
 
   const handleDelete = async () => {
+    if (!window.confirm(t("settings.integrations.deleteConfirm"))) return;
     setIsSaving(true);
     setError(null);
     try {
