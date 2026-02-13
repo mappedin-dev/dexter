@@ -3,6 +3,7 @@ import type {
   JiraJob,
   GitHubJob,
   AdminJob,
+  AdfNode,
   WebhookPayload,
   GitHubWebhookPayload,
   JiraIssueUpdatedPayload,
@@ -124,11 +125,34 @@ export function isCommentCreatedEvent(payload: WebhookPayload): boolean {
 }
 
 /**
- * Extract bot instruction from comment body
- * Returns null if no trigger found (e.g., @mapthew or configured bot name)
+ * Extract plain text from an Atlassian Document Format (ADF) node tree.
+ * Recursively walks the ADF structure and concatenates text from:
+ * - "text" nodes (via their .text property)
+ * - "mention" nodes (via their .attrs.text property, e.g., "@mapthew")
  */
-export function extractBotInstruction(commentBody: string): string | null {
-  const match = commentBody.match(getTriggerPattern());
+export function extractTextFromAdf(node: AdfNode): string {
+  if (node.type === "text" && node.text) {
+    return node.text;
+  }
+  if (node.type === "mention" && node.attrs?.text) {
+    return node.attrs.text as string;
+  }
+  if (node.content) {
+    return node.content.map(extractTextFromAdf).join("");
+  }
+  return "";
+}
+
+/**
+ * Extract bot instruction from comment body.
+ * Handles both plain text strings and ADF (Atlassian Document Format) objects.
+ * Returns null if no trigger found (e.g., @mapthew or configured bot name).
+ */
+export function extractBotInstruction(commentBody: string | AdfNode): string | null {
+  const text = typeof commentBody === "string"
+    ? commentBody
+    : extractTextFromAdf(commentBody);
+  const match = text.match(getTriggerPattern());
   return match ? match[1].trim() : null;
 }
 

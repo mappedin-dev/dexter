@@ -98,13 +98,28 @@ export interface CommentResult {
 }
 
 /**
+ * Atlassian Document Format (ADF) node types relevant to text extraction.
+ * Jira sends ADF when rich mentions (autocomplete) are used in comments.
+ */
+export interface AdfNode {
+  type: string;
+  text?: string;
+  content?: AdfNode[];
+  attrs?: Record<string, unknown>;
+}
+
+/**
  * JIRA webhook payload for comment_created event
  * Minimal payload - MCP fetches full ticket details
+ *
+ * comment.body can be either:
+ * - A plain text string (when user types without rich formatting)
+ * - An ADF object (when user uses Jira's autocomplete for @mentions)
  */
 export interface WebhookPayload {
   webhookEvent: string;
   comment: {
-    body: string;
+    body: string | AdfNode;
     author: {
       displayName: string;
     };
