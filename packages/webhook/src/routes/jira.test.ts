@@ -154,6 +154,62 @@ describe("JIRA webhook routes", () => {
       expect(mockQueue.add).not.toHaveBeenCalled();
     });
 
+    it("queues job for comment_created with ADF rich mention", async () => {
+      const payload = {
+        webhookEvent: "comment_created",
+        comment: {
+          body: {
+            type: "doc",
+            version: 1,
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  {
+                    type: "mention",
+                    attrs: {
+                      id: "557058:abc123def456",
+                      text: "@mapthew",
+                      accessLevel: "",
+                    },
+                  },
+                  {
+                    type: "text",
+                    text: " implement authentication",
+                  },
+                ],
+              },
+            ],
+          },
+          author: { displayName: "John Doe" },
+        },
+        issue: { key: "PROJ-123" },
+      };
+
+      const app = createApp();
+      const res = await request(app)
+        .post("/webhook/jira")
+        .send(payload);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        status: "queued",
+        issueKey: "PROJ-123",
+      });
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        "process-ticket",
+        expect.objectContaining({
+          source: "jira",
+          issueKey: "PROJ-123",
+          projectKey: "PROJ",
+          instruction: "implement authentication",
+          triggeredBy: "John Doe",
+        }),
+        expect.any(Object)
+      );
+      expect(postJiraComment).toHaveBeenCalled();
+    });
+
     it("extracts project key from issue key", async () => {
       const payload = {
         webhookEvent: "comment_created",
